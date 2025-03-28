@@ -2,6 +2,8 @@ import { useState } from 'react';
 import JSZip from 'jszip';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
+import { hashChunk } from '../integrity/fileIntegrity';
+import { encode } from '../node/utils';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -35,18 +37,18 @@ const Sender = ({ node }) => {
 		});
 	};
 
-	/**
-	 * @param {Uint8Array} arrayBuffer
-	 * @return {ReadableStream}
-	 */
-	function arrayBufferToStream(arrayBuffer) {
-		return new ReadableStream({
-			start(controller) {
-				controller.enqueue(new Uint8Array(arrayBuffer));
-				controller.close();
-			},
-		});
-	}
+	// /**
+	//  * @param {Uint8Array} arrayBuffer
+	//  * @return {ReadableStream}
+	//  */
+	// function arrayBufferToStream(arrayBuffer) {
+	// 	return new ReadableStream({
+	// 		start(controller) {
+	// 			controller.enqueue(new Uint8Array(ArrayBuffer));
+	// 			controller.close();
+	// 		},
+	// 	});
+	// }
 
 	const zipFiles = async () => {
 		const zip = new JSZip();
@@ -76,7 +78,20 @@ const Sender = ({ node }) => {
 			const fileData = await zipFiles();
 			const fileSize = fileData.byteLength;
 
-			const fileDataStream = arrayBufferToStream(fileData);
+			// const fileDataStream = arrayBufferToStream(fileData);
+
+			const chunkSize = 8 * 1024;
+			const chunks = [];
+			const hashes = [];
+
+			let offset = 0;
+			while (offset < fileSize) {
+				const slice = fileData.slice(offset, offset + chunkSize);
+				chunks.push(slice);
+				hashes.push(hashChunk(slice));
+
+				offset += chunkSize;
+			}
 
 			const peerMA = multiaddr(`${peerAdd}`);
 			const controller = new AbortController();
@@ -90,16 +105,18 @@ const Sender = ({ node }) => {
 			let sentBytes = 0;
 
 			const trackerPercentage = async function* () {
-				for await (const chunk of fileDataStream) {
+				for (let index = 0; index < chunks.length; index++) {
+					const chunk = chunks[index];
+					const hash = await hashChunk(chunk);
+
 					sentBytes += chunk.length;
-					console.log(`Sent chunk: ${chunk.length} bytes`);
 					let progress = ((sentBytes / fileSize) * 100).toFixed(2);
 					setProgress(progress);
-					yield chunk;
+					yield encode(index, hash, chunk);
 					await new Promise((res) => setTimeout(res, 100));
 				}
 			};
-			await pipe(fileDataStream, trackerPercentage, stream.sink);
+			await pipe(trackerPercentage, stream.sink);
 		} catch (error) {
 			setError(error.message);
 			console.log(error);
