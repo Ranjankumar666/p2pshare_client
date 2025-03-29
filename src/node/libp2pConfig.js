@@ -38,7 +38,8 @@ const defaultConfig = {
 		yamux({
 			maxInboundStreams: 2048,
 			maxOutboundStreams: 2048,
-			maxMessageSize: 1024 * 1024 * 4,
+			maxMessageSize: 1024 * 1024 * 16,
+
 			// maxStreamWindowSize
 		}),
 	],

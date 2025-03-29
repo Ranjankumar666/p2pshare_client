@@ -37,19 +37,6 @@ const Sender = ({ node }) => {
 		});
 	};
 
-	// /**
-	//  * @param {Uint8Array} arrayBuffer
-	//  * @return {ReadableStream}
-	//  */
-	// function arrayBufferToStream(arrayBuffer) {
-	// 	return new ReadableStream({
-	// 		start(controller) {
-	// 			controller.enqueue(new Uint8Array(ArrayBuffer));
-	// 			controller.close();
-	// 		},
-	// 	});
-	// }
-
 	const zipFiles = async () => {
 		const zip = new JSZip();
 
@@ -77,20 +64,18 @@ const Sender = ({ node }) => {
 			setSending(true);
 			const fileData = await zipFiles();
 			const fileSize = fileData.byteLength;
+			// const sentPackets = new Map();
 
-			// const fileDataStream = arrayBufferToStream(fileData);
-
-			const chunkSize = 8 * 1024;
+			const chunkSize = 10 * 1024;
 			const chunks = [];
-			const hashes = [];
 
 			let offset = 0;
+			let index = 0;
 			while (offset < fileSize) {
-				const slice = fileData.slice(offset, offset + chunkSize);
+				const slice = [index, offset, offset + chunkSize];
 				chunks.push(slice);
-				hashes.push(hashChunk(slice));
-
 				offset += chunkSize;
+				index += 1;
 			}
 
 			const peerMA = multiaddr(`${peerAdd}`);
@@ -104,9 +89,12 @@ const Sender = ({ node }) => {
 			stream = await conn.newStream([PROTOCOL]);
 			let sentBytes = 0;
 
+			const stack = [...chunks];
+
 			const trackerPercentage = async function* () {
-				for (let index = 0; index < chunks.length; index++) {
-					const chunk = chunks[index];
+				while (stack.length > 0) {
+					const [index, start, end] = stack.pop();
+					const chunk = fileData.slice(start, end);
 					const hash = await hashChunk(chunk);
 
 					sentBytes += chunk.length;

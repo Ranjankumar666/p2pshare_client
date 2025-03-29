@@ -1,37 +1,60 @@
-import { toByteArray, fromByteArray } from 'base64-js';
 import { pipe } from 'it-pipe';
-import { hashChunk } from '../integrity/fileIntegrity';
+import {
+	bufferToHex,
+	hashChunk,
+	hexToBuffer,
+} from '../integrity/fileIntegrity';
 
 const encode = (index, hash, chunk) => {
-	const json = JSON.stringify({
-		index,
-		hash,
-		chunk: fromByteArray(chunk),
-	});
+	const indexBuffer = new Uint32Array([index]); // 4 bytes
+	const hashBuffer = hexToBuffer(hash);
 
-	return new TextEncoder().encode(json);
+	if (hashBuffer.length !== 32) {
+		throw new Error('Invalid hash length, expected 32 bytes.');
+	}
+
+	const totalLength =
+		indexBuffer.byteLength + hashBuffer.byteLength + chunk.byteLength;
+	const finalBuffer = new Uint8Array(totalLength);
+
+	// Copy all parts into the final buffer
+	finalBuffer.set(new Uint8Array(indexBuffer.buffer), 0);
+	finalBuffer.set(hashBuffer, indexBuffer.byteLength);
+	finalBuffer.set(chunk, indexBuffer.byteLength + hashBuffer.byteLength);
+
+	return finalBuffer;
 };
 
-const decode = (receivedData) => {
-	const jsonString = new TextDecoder().decode(receivedData); // Convert Uint8Array to JSON string
+const decode = (buffer) => {
+	// Extract index using DataView for accurate byte reading
+	const index = new DataView(buffer.buffer, buffer.byteOffset, 4).getUint32(
+		0,
+		true
+	);
 
-	try {
-		const { index, hash, chunk } = JSON.parse(jsonString);
-		const sanitized = {
-			index,
-			hash,
-			chunk: toByteArray(chunk), // Convert Base64 back to Uint8Array
-		};
+	// Extract 32-byte hash
+	const hashBuffer = buffer.slice(4, 36);
+	const hash = bufferToHex(hashBuffer); // Convert to hex string
 
-		return sanitized;
-	} catch (error) {
-		console.error(
-			'JSON Parse Error:',
-			error,
-			'\nReceived Data:',
-			jsonString
-		);
-		throw error; // Re-throw error for better debugging
+	// Extract remaining chunk
+	const chunkBuffer = buffer.slice(36);
+
+	return { index, hash, chunk: chunkBuffer };
+};
+
+const checkStreamHasChunk = async (stream) => {
+	for (const rawChunk of stream.source) {
+		if (!(rawChunk.bufs[0] instanceof Uint8Array)) {
+			console.error('Received non-Uint8Array chunk:', rawChunk);
+			return false;
+		}
+		const { chunk } = decode(rawChunk.bufs[0]);
+
+		if (chunk.length === 0) {
+			return false;
+		}
+
+		return true;
 	}
 };
 
@@ -45,21 +68,21 @@ const convertStreamToFile = async (stream) => {
 				console.error('Received non-Uint8Array chunk:', rawChunk);
 				continue;
 			}
-
 			const { index, hash, chunk } = decode(rawChunk.bufs[0]);
-			if (hash === (await hashChunk(chunk))) {
-				received.set(index, chunk);
+			const computedHash = await hashChunk(chunk);
+			if (hash !== computedHash) {
+				// await pipe(encode(index, hash, chunk), stream.sink);
+				return;
 			}
+			received.set(index, chunk);
+			//acknowledge the chunk
 		}
 	});
-
-	console.log(received);
 	return assembleZipChunks(received);
 };
 const assembleZipChunks = (map) => {
 	// 1️⃣ Sort chunks by index
 	const sortedIndices = Array.from(map.keys()).sort((a, b) => a - b);
-	console.log(sortedIndices);
 
 	// 2️⃣ Merge all chunks into a single Uint8Array
 	let totalSize = sortedIndices.reduce(
@@ -99,4 +122,10 @@ const handleFileDownload = (fileBlob) => {
 	});
 };
 
-export { encode, decode, convertStreamToFile, handleFileDownload };
+export {
+	encode,
+	decode,
+	convertStreamToFile,
+	handleFileDownload,
+	checkStreamHasChunk,
+};
