@@ -3,7 +3,7 @@ import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
 import { chunkify, zipFiles } from '../node/utils';
 import { encode, decode } from '../buffer/codec';
-import { RETRY_THRESHOLD } from '../node/constants';
+import { RETRY_THRESHOLD, CHUNK_SIZE } from '../node/constants';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -51,7 +51,13 @@ const Sender = ({ node }) => {
 			const fileData = await zipFiles(files);
 			const fileSize = fileData.byteLength;
 
-			const { chunks, hashes } = await chunkify(fileData, fileSize);
+			const { chunks, hashes } = await chunkify(
+				fileData,
+				fileSize,
+				CHUNK_SIZE
+			);
+
+			console.log(chunks.length);
 			const peerMA = multiaddr(`${peerAdd}`);
 			conn = await node.dial(peerMA);
 
@@ -74,7 +80,7 @@ const Sender = ({ node }) => {
 					let progress = ((sentBytes / fileSize) * 100).toFixed(2);
 					setProgress(progress);
 					yield encode(0, { index, hash, chunk });
-					await new Promise((res) => setTimeout(res, 100));
+					await new Promise((res) => setTimeout(res, 200));
 				}
 			};
 
@@ -140,8 +146,8 @@ const Sender = ({ node }) => {
 			</div>
 			<div className="">
 				{Object.entries(files).map(([key, file], id) => (
-					<div className="">
-						<li key={files.length + id + key}>{file.name}</li>
+					<div className="" key={files.length + id + key}>
+						<li>{file.name}</li>
 						<button onClick={() => removeFile(key)}>X</button>
 					</div>
 				))}

@@ -43,7 +43,7 @@ import { decode } from '../buffer/codec';
 /**
  *
  *
- * @param {*} stream
+ * @param {import('@libp2p/interface').Stream} stream
  * @param {Map} received
  * @param {Set} failed
  */
@@ -56,6 +56,7 @@ const convertStreamToFile = async (stream, received, failed) => {
 				console.error('Received non-Uint8Array chunk:', rawChunk);
 				continue;
 			}
+
 			const { index, hash, chunk } = decode(rawChunk.bufs[0]);
 
 			const computedHash = await hashChunk(chunk);

@@ -27,10 +27,16 @@ const defaultConfig = {
 			filter: filters.all,
 		}),
 		webRTC({
-			iceServers: [
-				{ urls: 'stun:stun.l.google.com:19302' },
-				{ urls: 'stun:stun1.l.google.com:19302' },
-			],
+			rtcConfiguration: {
+				iceServers: [
+					{ urls: 'stun:stun.l.google.com:19302' },
+					{ urls: 'stun:stun1.l.google.com:19302' },
+				],
+			},
+			dataChannel: {
+				maxMessageSize: 256 * 1024,
+				maxBufferedAmount: 32 * 1024 * 1024,
+			},
 		}),
 	],
 	connectionEncrypters: [noise()],
@@ -38,7 +44,7 @@ const defaultConfig = {
 		yamux({
 			maxInboundStreams: 2048,
 			maxOutboundStreams: 2048,
-			maxMessageSize: 1024 * 1024 * 16,
+			maxMessageSize: 1024 * 1024 * 1024 * 16,
 
 			// maxStreamWindowSize
 		}),
