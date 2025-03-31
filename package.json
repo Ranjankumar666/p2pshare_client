@@ -19,6 +19,7 @@
 		"it-pipe": "^3.0.1",
 		"jszip": "^3.10.1",
 		"libp2p": "^2.7.1",
+		"protobufjs": "^7.4.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"react-scripts": "5.0.1",

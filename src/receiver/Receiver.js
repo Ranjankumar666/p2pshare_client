@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { WEBRTC_CODE } from '../node/node';
 
-const Receive = ({ node }) => {
+/**
+ * @type {import('react').FC<{
+ *   node: import('@libp2p/interface').Libp2p;}> Receiver
+ */
+const Receiver = ({ node }) => {
 	// const [node, setNode] = useState();
 	const [addresses] = useState(
 		node
@@ -36,4 +40,4 @@ const Receive = ({ node }) => {
 	);
 };
 
-export default Receive;
+export default Receiver;

@@ -1,0 +1,57 @@
+{
+	"nested": {
+		"Packet": {
+			"oneofs": {
+				"payload": {
+					"oneof": ["chunkPacket", "ackPacket", "retryPacket"]
+				}
+			},
+			"fields": {
+				"type": {
+					"type": "int32",
+					"id": 1
+				},
+				"chunkPacket": {
+					"type": "ChunkPacket",
+					"id": 2
+				},
+				"ackPacket": {
+					"type": "AckPacket",
+					"id": 3
+				},
+				"retryPacket": {
+					"type": "RetryPacket",
+					"id": 4
+				}
+			}
+		},
+		"ChunkPacket": {
+			"fields": {
+				"index": {
+					"type": "int32",
+					"id": 1
+				},
+				"hash": {
+					"type": "string",
+					"id": 2
+				},
+				"chunk": {
+					"type": "bytes",
+					"id": 3
+				}
+			}
+		},
+		"AckPacket": {
+			"fields": {}
+		},
+		"RetryPacket": {
+			"fields": {
+				"indices": {
+					"rule": "repeated",
+					"type": "int32",
+					"id": 1
+				}
+			}
+		}
+	}
+}

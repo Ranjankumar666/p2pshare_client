@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import JSZip from 'jszip';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
-import { hashChunk } from '../integrity/fileIntegrity';
-import { encode } from '../node/utils';
+import { chunkify, zipFiles } from '../node/utils';
+import { encode, decode } from '../buffer/codec';
+import { RETRY_THRESHOLD } from '../node/constants';
 
 const PROTOCOL = '/lftp/1.0';
 
+/**
+ * @type {import('react').FC<{
+ *   node: import('@libp2p/interface').Libp2p;}> Sender
+ */
 const Sender = ({ node }) => {
 	const [files, setFiles] = useState({});
 	const [peerAdd, setPeerAdd] = useState('');
@@ -37,74 +41,73 @@ const Sender = ({ node }) => {
 		});
 	};
 
-	const zipFiles = async () => {
-		const zip = new JSZip();
-
-		Object.values(files).forEach(async (file) => {
-			zip.file(file.name, file, {
-				binary: true,
-			});
-		});
-
-		const fileData = await zip.generateAsync({
-			type: 'uint8array',
-			compression: 'DEFLATE',
-			compressionOptions: {
-				level: 9,
-			},
-		});
-
-		return fileData;
-	};
-
 	const send = async () => {
+		/** @type {import('@libp2p/interface').Connection} */
 		let conn;
+		/** @type {import('@libp2p/interface').Stream} */
 		let stream;
 		try {
 			setSending(true);
-			const fileData = await zipFiles();
+			const fileData = await zipFiles(files);
 			const fileSize = fileData.byteLength;
-			// const sentPackets = new Map();
 
-			const chunkSize = 10 * 1024;
-			const chunks = [];
-
-			let offset = 0;
-			let index = 0;
-			while (offset < fileSize) {
-				const slice = [index, offset, offset + chunkSize];
-				chunks.push(slice);
-				offset += chunkSize;
-				index += 1;
-			}
-
+			const { chunks, hashes } = await chunkify(fileData, fileSize);
 			const peerMA = multiaddr(`${peerAdd}`);
-			const controller = new AbortController();
-			const signal = controller.signal;
-			conn = await node.dial(peerMA, { signal });
+			conn = await node.dial(peerMA);
 
 			if (!conn || conn.status !== 'open') {
 				return;
 			}
+
 			stream = await conn.newStream([PROTOCOL]);
 			let sentBytes = 0;
 
-			const stack = [...chunks];
+			const stack = chunks.map((_, index) => index);
 
-			const trackerPercentage = async function* () {
+			const write = async function* () {
 				while (stack.length > 0) {
-					const [index, start, end] = stack.pop();
-					const chunk = fileData.slice(start, end);
-					const hash = await hashChunk(chunk);
+					const index = stack.pop();
+					const chunk = chunks[index];
+					const hash = hashes[index];
 
 					sentBytes += chunk.length;
 					let progress = ((sentBytes / fileSize) * 100).toFixed(2);
 					setProgress(progress);
-					yield encode(index, hash, chunk);
+					yield encode(0, { index, hash, chunk });
 					await new Promise((res) => setTimeout(res, 100));
 				}
 			};
-			await pipe(trackerPercentage, stream.sink);
+
+			let retries = 0;
+
+			const read = async function (source) {
+				for await (const rawChunk of source) {
+					const decodedChunk = decode(rawChunk.bufs[0]);
+
+					if (decodedChunk.type === 1) {
+						console.log('File sent successfully');
+						return;
+					}
+					console.log('Retrying ----> ', decodedChunk.indices);
+					decodedChunk.indices.forEach((idx) => stack.push(idx));
+					break;
+				}
+
+				if (retries === RETRY_THRESHOLD) return;
+
+				retries += 1;
+
+				if (conn.status === 'closed') {
+					conn = await node.dial(peerMA);
+					stream = await conn.newStream([PROTOCOL]);
+				}
+
+				await pipe(write, stream);
+				await pipe(stream, read);
+			};
+
+			await pipe(write, stream);
+			await pipe(stream, read);
 		} catch (error) {
 			setError(error.message);
 			console.log(error);
