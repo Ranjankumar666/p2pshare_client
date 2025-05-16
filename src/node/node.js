@@ -47,7 +47,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 const createNode = async () => {
 	const node = await createLibp2p(defaultConfig);
 
-	node.handle([PROTOCOL, '/webrtc', '/p2p-circuit'], handleProtocolStream, {
+	node.handle([PROTOCOL], handleProtocolStream, {
 		force: true,
 		runOnLimitedConnection: true,
 		maxInboundStreams: 100,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
 import { chunkify, zipFiles } from '../node/utils';
@@ -14,114 +14,206 @@ const PROTOCOL = '/lftp/1.0';
 const Sender = ({ node }) => {
 	const [files, setFiles] = useState({});
 	const [peerAdd, setPeerAdd] = useState('');
-	const [error, setError] = useState('');
-	const [progress, setProgress] = useState(0);
-	const [sending, setSending] = useState(false);
+	const [error, setError] = useState({});
+	const [progress, setProgress] = useState({});
+	const [sending, setSending] = useState({});
+	const [go, setGo] = useState();
+	const [wasmReady, setWasmReady] = useState();
+	const zipFileWasmRef = useRef();
+
+	useEffect(() => {
+		(async () => {
+			const wasmResponse = await fetch('/main.wasm');
+			const wasmBuffer = await wasmResponse.arrayBuffer();
+			const goInstance = new window.Go();
+
+			const { instance } = await WebAssembly.instantiate(
+				wasmBuffer,
+				goInstance.importObject
+			);
+			goInstance.run(instance);
+
+			// Access your exported function
+			zipFileWasmRef.current = window.zipFileWASM;
+			setGo(goInstance);
+			setWasmReady(true);
+		})();
+	});
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
 		const { files } = e.target;
 
 		for (let file of files) {
+			if (files[file.name]) continue;
 			setFiles((oldState) => {
 				const newState = { ...oldState };
 				newState[file.name] = file;
 
 				return newState;
 			});
+
+			setProgress((oldState) => {
+				const newState = { ...oldState };
+				newState[file.name] = 0;
+
+				return newState;
+			});
+
+			setError((oldState) => {
+				const newState = { ...oldState };
+				const keyObj = { ...oldState[file.name] };
+				keyObj.state = false;
+				keyObj.msg = '';
+
+				newState[file.name] = keyObj;
+
+				return newState;
+			});
+
+			setSending((oldState) => {
+				const newState = { ...oldState };
+				newState[file.name] = false;
+				return newState;
+			});
 		}
 	};
 
 	const removeFile = (file) => {
-		setFiles((oldState) => {
+		const del = (oldState) => {
 			const newState = { ...oldState };
 			delete newState[file];
 
 			return newState;
-		});
+		};
+		setFiles(del);
+
+		setProgress(del);
+
+		setError(del);
+
+		setSending(del);
 	};
 
-	const send = async () => {
-		/** @type {import('@libp2p/interface').Connection} */
-		let conn;
-		/** @type {import('@libp2p/interface').Stream} */
-		let stream;
-		try {
-			setSending(true);
-			const fileData = await zipFiles(files);
-			const fileSize = fileData.byteLength;
+	const sendOneFile = async (fileName, bytefiles, peerMA) => {
+		const singleFile = {};
+		const arrayBuf = await bytefiles[fileName].arrayBuffer();
+		singleFile[fileName] = new Uint8Array(arrayBuf);
 
-			const { chunks, hashes } = await chunkify(
-				fileData,
-				fileSize,
-				CHUNK_SIZE
-			);
+		const fileData = zipFileWasmRef.current(singleFile);
+		// const fileData = await zipFiles(singleFile);
+		console.log(fileData);
+		const fileSize = fileData.byteLength;
+		const { chunks, hashes } = await chunkify(
+			fileData,
+			fileSize,
+			CHUNK_SIZE
+		);
 
-			console.log(chunks.length);
-			const peerMA = multiaddr(`${peerAdd}`);
-			conn = await node.dial(peerMA);
+		let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+		let sentBytes = 0;
+		let retries = 0;
 
-			if (!conn || conn.status !== 'open') {
+		const stack = chunks.map((_, index) => index);
+
+		const write = async function* () {
+			while (stack.length > 0) {
+				const index = stack.pop();
+				const chunk = chunks[index];
+				const hash = hashes[index];
+
+				sentBytes += chunk.length;
+				setProgress((oldState) => {
+					const newState = { ...oldState };
+					newState[fileName] = ((sentBytes / fileSize) * 100).toFixed(
+						2
+					);
+
+					return newState;
+				});
+				yield encode(0, { index, hash, chunk });
+
+				await new Promise((res) => setTimeout(res, 100));
+			}
+		};
+
+		const read = async function (source) {
+			for await (const rawChunk of source) {
+				const decodedChunk = decode(rawChunk.bufs[0]);
+
+				if (decodedChunk.type === 1) {
+					console.log(`✅ File ${fileName} sent successfully`);
+					return;
+				}
+
+				console.log(
+					`🔁 Retry requested for ${fileName}:`,
+					decodedChunk.indices
+				);
+				decodedChunk.indices.forEach((idx) => stack.push(idx));
+				break;
+			}
+
+			if (++retries > RETRY_THRESHOLD) {
+				console.warn(`⚠️ Retry threshold exceeded for ${fileName}`);
 				return;
 			}
 
-			stream = await conn.newStream([PROTOCOL]);
-			let sentBytes = 0;
-
-			const stack = chunks.map((_, index) => index);
-
-			const write = async function* () {
-				while (stack.length > 0) {
-					const index = stack.pop();
-					const chunk = chunks[index];
-					const hash = hashes[index];
-
-					sentBytes += chunk.length;
-					let progress = ((sentBytes / fileSize) * 100).toFixed(2);
-					setProgress(progress);
-					yield encode(0, { index, hash, chunk });
-					await new Promise((res) => setTimeout(res, 200));
-				}
-			};
-
-			let retries = 0;
-
-			const read = async function (source) {
-				for await (const rawChunk of source) {
-					const decodedChunk = decode(rawChunk.bufs[0]);
-
-					if (decodedChunk.type === 1) {
-						console.log('File sent successfully');
-						return;
-					}
-					console.log('Retrying ----> ', decodedChunk.indices);
-					decodedChunk.indices.forEach((idx) => stack.push(idx));
-					break;
-				}
-
-				if (retries === RETRY_THRESHOLD) return;
-
-				retries += 1;
-
-				if (conn.status === 'closed') {
-					conn = await node.dial(peerMA);
-					stream = await conn.newStream([PROTOCOL]);
-				}
-
-				await pipe(write, stream);
-				await pipe(stream, read);
-			};
-
+			stream = await node.dialProtocol(peerMA, [PROTOCOL]);
 			await pipe(write, stream);
 			await pipe(stream, read);
+		};
+
+		await pipe(write, stream);
+		await pipe(stream, read);
+		await stream.close();
+	};
+
+	const send = async (fileNameKey) => {
+		setSending((oldState) => {
+			const newState = { ...oldState };
+			newState[fileNameKey] = true;
+			return newState;
+		});
+
+		try {
+			const peerMA = multiaddr(`${peerAdd}`);
+
+			// Convert all files to Uint8Arrays
+			// for (let fileName in files) {
+			// 	const arrayBuffer = await files[fileName].arrayBuffer();
+			// 	bytefiles[fileName] = new Uint8Array(arrayBuffer);
+			// }
+
+			// Loop through each file individually
+			if (fileNameKey) {
+				// await sendOneFile(fileNameKey, files, peerMA);
+				await sendOneFile(fileNameKey, files, peerMA);
+			}
 		} catch (error) {
-			setError(error.message);
-			console.log(error);
+			setError((oldState) => {
+				const newState = { ...oldState };
+				const keyObj = { ...oldState[fileNameKey] };
+				keyObj.state = true;
+				keyObj.msg = error.message;
+
+				newState[fileNameKey] = keyObj;
+
+				return newState;
+			});
+			console.error(error);
 		} finally {
-			setSending(false);
-			setProgress(0);
-			await stream.close();
-			await conn.close();
+			setSending((oldState) => {
+				const newState = { ...oldState };
+				newState[fileNameKey] = false;
+				return newState;
+			});
+			setProgress((oldState) => {
+				const newState = { ...oldState };
+				newState[fileNameKey] = 0;
+
+				return newState;
+			});
 		}
 	};
 
@@ -145,19 +237,31 @@ const Sender = ({ node }) => {
 				/>
 			</div>
 			<div className="">
+				<div className="">
+					<button
+						onClick={async () => {
+							for (let file in files) {
+								await send(file);
+							}
+						}}
+					>
+						Send All
+					</button>
+				</div>
 				{Object.entries(files).map(([key, file], id) => (
 					<div className="" key={files.length + id + key}>
 						<li>{file.name}</li>
 						<button onClick={() => removeFile(key)}>X</button>
+						<button onClick={() => send(key)}>Send</button>
+						{sending[key] && `File sent ---> ${progress[key]} %`}
+						{error[key].status && error[key].msg}
 					</div>
 				))}
 			</div>
-			<button type="button" onClick={send} disabled={!files || !peerAdd}>
+			{/* <button type="button" onClick={send} disabled={!files || !peerAdd}>
 				Send
-			</button>
+			</button> */}
 			{/* {sending && 'Sending......'} */}
-			{sending && `File sent ---> ${progress} %`}
-			{error && error}
 		</div>
 	);
 };

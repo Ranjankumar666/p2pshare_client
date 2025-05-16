@@ -143,7 +143,7 @@ const zipFiles = async (files) => {
 		type: 'uint8array',
 		compression: 'DEFLATE',
 		compressionOptions: {
-			level: 9,
+			level: 5,
 		},
 	});
 
