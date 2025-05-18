@@ -4,7 +4,7 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import { Container, Grid, Icon, Spinner, Tabs } from '@chakra-ui/react';
+import { Box, Container, Grid, Icon, Spinner, Tabs } from '@chakra-ui/react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
@@ -85,7 +85,9 @@ function App() {
 						</Tabs.Content>
 					</Tabs.Root>
 				) : (
-					<Spinner />
+					<Box paddingTop={['8', '10', '12', '14']}>
+						<Spinner />
+					</Box>
 				)}
 			</Grid>
 		</Container>

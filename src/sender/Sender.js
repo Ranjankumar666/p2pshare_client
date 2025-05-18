@@ -286,7 +286,25 @@ const Sender = () => {
 					</Icon>
 				</Button>
 			</Group>
-
+			{genError && (
+				<Group alignSelf="center">
+					<Text color="red.600">
+						Error:{' '}
+						{genError.lenght > 64
+							? genError.substring(0, 64) + '....'
+							: genError}
+					</Text>
+					<Button
+						size="xs"
+						onClick={() => setGenError(undefined)}
+						variant="surface"
+					>
+						<Icon>
+							<MdClose />
+						</Icon>
+					</Button>
+				</Group>
+			)}
 			<SimpleGrid columns={[2, null, 3]} gap="2">
 				{Object.entries(files).map(([key, file], id) => (
 					<Card.Root
@@ -342,16 +360,6 @@ const Sender = () => {
 					</Card.Root>
 				))}
 			</SimpleGrid>
-			{genError && (
-				<Group alignSelf="center">
-					<Text color="red.600">{genError}</Text>
-					<Button size="xs" onClick={() => setGenError(undefined)}>
-						<Icon>
-							<MdClose />
-						</Icon>
-					</Button>
-				</Group>
-			)}
 		</Stack>
 	);
 };
