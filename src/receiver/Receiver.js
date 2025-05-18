@@ -31,44 +31,40 @@ const Receiver = () => {
 	}, [node]);
 
 	const MainComp = (
-		<>
-			<Stack align="center">
-				{/* <div className=""> */}
-				<Heading size="2xl">
-					Share one with receiver to download files
-				</Heading>
-				{/* </div> */}
-				{/* <Grid alignItems="center"> */}
-				{addresses && addresses.length ? (
-					addresses.map((address, i) => (
-						<Group key={i}>
-							<Input
-								type="text"
-								value={address}
-								readOnly
-								size="xs"
-								paddingY="4"
-								width="sm"
-							/>
+		<Stack>
+			{/* <div className=""> */}
+			<Heading size={['sm', 'md', 'lg', 'xl']} textWrap="true">
+				Copy address and share to download files
+			</Heading>
+			{/* </div> */}
+			{/* <Grid alignItems="center"> */}
+			{addresses && addresses.length ? (
+				addresses.map((address, i) => (
+					<Group>
+						<Input
+							type="text"
+							value={address}
+							readOnly
+							size="xs"
+							paddingY="4"
+						/>
 
-							<Clipboard.Root value={address}>
-								<Clipboard.Trigger asChild>
-									<Button variant="surface" size="xs">
-										<Clipboard.Indicator />
-										<Clipboard.CopyText />
-									</Button>
-								</Clipboard.Trigger>
-							</Clipboard.Root>
-						</Group>
-					))
-				) : (
-					<Spinner size="md" />
-				)}
-				{/* </Grid> */}
-
-				{downloading && 'Downloading......'}
-			</Stack>
-		</>
+						<Clipboard.Root value={address}>
+							<Clipboard.Trigger asChild>
+								<Button variant="surface" size="xs">
+									<Clipboard.Indicator />
+									<Clipboard.CopyText />
+								</Button>
+							</Clipboard.Trigger>
+						</Clipboard.Root>
+					</Group>
+				))
+			) : (
+				<Spinner size="md" />
+			)}
+			{/* </Grid> */}
+			{downloading && 'Downloading......'}
+		</Stack>
 	);
 
 	return <>{addresses ? MainComp : <Spinner />}</>;
