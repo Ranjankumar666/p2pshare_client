@@ -7,7 +7,6 @@ export const stateSlice = createSlice({
 	},
 	reducers: {
 		setNode: (state, action) => {
-			console.log(action.payload);
 			state.node = action.payload;
 		},
 	},

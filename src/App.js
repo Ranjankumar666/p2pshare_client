@@ -4,8 +4,8 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import { Container, Grid, Icon, Tabs } from '@chakra-ui/react';
-import { useDispatch } from 'react-redux';
+import { Container, Grid, Icon, Spinner, Tabs } from '@chakra-ui/react';
+import { useDispatch, useSelector } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
 import { multiaddr } from '@multiformats/multiaddr';
@@ -13,6 +13,7 @@ import { REMOTE_RELAY_NODE } from './node/constants';
 
 function App() {
 	const dispatch = useDispatch();
+	const node = useSelector((state) => state.node);
 
 	useEffect(() => {
 		loadWasm().then(() => {
@@ -25,7 +26,6 @@ function App() {
 		(async () => {
 			node = await createNode();
 			await node.dial(multiaddr(REMOTE_RELAY_NODE));
-
 			console.log('Registered to Relay');
 			dispatch(setNode(node));
 		})();
@@ -56,28 +56,37 @@ function App() {
 				boxShadow="0 0 8px rgba(255, 255, 255, 0.04)"
 				borderRadius="2xl"
 			>
-				<Tabs.Root fitted defaultValue="Share" size="lg" width="full">
-					<Tabs.List>
-						<Tabs.Trigger value="Share">
-							Share
-							<Icon>
-								<MdShare />
-							</Icon>
-						</Tabs.Trigger>
-						<Tabs.Trigger value="Receive">
-							Receive
-							<Icon>
-								<MdDownload />
-							</Icon>
-						</Tabs.Trigger>
-					</Tabs.List>
-					<Tabs.Content value="Share">
-						<Sender />
-					</Tabs.Content>
-					<Tabs.Content value="Receive">
-						<Receiver />
-					</Tabs.Content>
-				</Tabs.Root>
+				{node ? (
+					<Tabs.Root
+						fitted
+						defaultValue="Share"
+						size="lg"
+						width="full"
+					>
+						<Tabs.List>
+							<Tabs.Trigger value="Share">
+								Share
+								<Icon>
+									<MdShare />
+								</Icon>
+							</Tabs.Trigger>
+							<Tabs.Trigger value="Receive">
+								Receive
+								<Icon>
+									<MdDownload />
+								</Icon>
+							</Tabs.Trigger>
+						</Tabs.List>
+						<Tabs.Content value="Share">
+							<Sender />
+						</Tabs.Content>
+						<Tabs.Content value="Receive">
+							<Receiver />
+						</Tabs.Content>
+					</Tabs.Root>
+				) : (
+					<Spinner />
+				)}
 			</Grid>
 		</Container>
 	);

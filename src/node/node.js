@@ -2,7 +2,12 @@ import { createLibp2p } from 'libp2p';
 import { defaultConfig } from './libp2pConfig';
 import { pipe } from 'it-pipe';
 
-import { PROTOCOL, BOOTSTRAP_NODES, WEBRTC_CODE } from './constants';
+import {
+	PROTOCOL,
+	BOOTSTRAP_NODES,
+	WEBRTC_CODE,
+	REMOTE_RELAY_NODE,
+} from './constants';
 import {
 	assembleZipChunks,
 	convertStreamToFile,
@@ -10,6 +15,7 @@ import {
 } from './utils';
 
 import { encode } from '../buffer/codec';
+import { multiaddr } from '@multiformats/multiaddr';
 
 const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
 const received = new Map();
@@ -55,7 +61,36 @@ const createNode = async () => {
 	});
 
 	await node.start();
+	await node.dial(multiaddr(REMOTE_RELAY_NODE));
+	await waitUntilRelayReservation(node);
 	return node;
+};
+
+const waitUntilRelayReservation = (
+	libp2p,
+	timeoutMs = 10000,
+	intervalMs = 500
+) => {
+	return new Promise((resolve, reject) => {
+		const start = Date.now();
+
+		const check = () => {
+			const addrs = libp2p.getMultiaddrs();
+			const hasRelay = addrs.some((addr) =>
+				addr.toString().includes('/p2p-circuit')
+			);
+
+			if (hasRelay) {
+				resolve();
+			} else if (Date.now() - start >= timeoutMs) {
+				reject(new Error('Timed out waiting for relay reservation'));
+			} else {
+				setTimeout(check, intervalMs);
+			}
+		};
+
+		check();
+	});
 };
 
 export { createNode, PROTOCOL, BOOTSTRAP_NODES, WEBRTC_CODE, isWebRTC };

@@ -57,7 +57,6 @@ const Sender = () => {
 		} else if (!zipFileWasmRef.current) {
 			zipFileWasmRef.current = window.zipFileWASM;
 		}
-		console.log(zipFileWasmRef.current);
 	}, []);
 
 	const handleFileChange = (e) => {
