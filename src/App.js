@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
+import { loadWasm } from './wasm/loadWasm';
 
 function App() {
 	const [active, setActive] = useState('');
@@ -12,6 +13,7 @@ function App() {
 	useEffect(() => {
 		let node = null;
 		(async () => {
+			await loadWasm();
 			node = await createNode();
 			console.log('Node id : ', node.peerId.toString());
 			console.log(

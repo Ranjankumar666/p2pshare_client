@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
-import { chunkify, zipFiles } from '../node/utils';
+import { chunkify } from '../node/utils';
 import { encode, decode } from '../buffer/codec';
 import { RETRY_THRESHOLD, CHUNK_SIZE } from '../node/constants';
 
@@ -17,28 +17,11 @@ const Sender = ({ node }) => {
 	const [error, setError] = useState({});
 	const [progress, setProgress] = useState({});
 	const [sending, setSending] = useState({});
-	const [go, setGo] = useState();
-	const [wasmReady, setWasmReady] = useState();
 	const zipFileWasmRef = useRef();
 
 	useEffect(() => {
-		(async () => {
-			const wasmResponse = await fetch('/main.wasm');
-			const wasmBuffer = await wasmResponse.arrayBuffer();
-			const goInstance = new window.Go();
-
-			const { instance } = await WebAssembly.instantiate(
-				wasmBuffer,
-				goInstance.importObject
-			);
-			goInstance.run(instance);
-
-			// Access your exported function
-			zipFileWasmRef.current = window.zipFileWASM;
-			setGo(goInstance);
-			setWasmReady(true);
-		})();
-	});
+		zipFileWasmRef.current = window.zipFileWASM;
+	}, []);
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
@@ -240,9 +223,10 @@ const Sender = ({ node }) => {
 				<div className="">
 					<button
 						onClick={async () => {
-							for (let file in files) {
-								await send(file);
-							}
+							const promiseArray = Object.keys(files).map(
+								(file) => send(file)
+							);
+							await Promise.all(promiseArray);
 						}}
 					>
 						Send All

@@ -1,6 +1,5 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import JSZip from 'jszip';
 import { decode } from '../buffer/codec';
 
 // const encode = (index, hash, chunk) => {
@@ -130,32 +129,11 @@ const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
 	return { chunks, hashes };
 };
 
-const zipFiles = async (files) => {
-	const zip = new JSZip();
-
-	Object.values(files).forEach(async (file) => {
-		zip.file(file.name, file, {
-			binary: true,
-		});
-	});
-
-	const fileData = await zip.generateAsync({
-		type: 'uint8array',
-		compression: 'DEFLATE',
-		compressionOptions: {
-			level: 5,
-		},
-	});
-
-	return fileData;
-};
-
 export {
 	// encode,
 	// decode,
 	convertStreamToFile,
 	handleFileDownload,
 	chunkify,
-	zipFiles,
 	assembleZipChunks,
 };

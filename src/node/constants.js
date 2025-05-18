@@ -3,9 +3,7 @@ import { protocols } from '@multiformats/multiaddr';
 const PROTOCOL = '/lftp/1.0';
 const WEBRTC_CODE = protocols('webrtc').code;
 const BOOTSTRAP_NODES = [
-	'/ip4/127.0.0.1/tcp/8080/ws/p2p/12D3KooWHia2UG2ChT4xJqV8CLJScMV5KvxMp6kqoSMQqqoq4Krc',
-	'/ip4/192.168.1.8/tcp/8080/ws/p2p/12D3KooWHia2UG2ChT4xJqV8CLJScMV5KvxMp6kqoSMQqqoq4Krc',
-	'/p2p-circuit/p2p/12D3KooWHia2UG2ChT4xJqV8CLJScMV5KvxMp6kqoSMQqqoq4Krc',
+	'/dns4/p2pshare-relay.onrender.com/tcp/443/wss/p2p/12D3KooWJsdceTSoGhdJfVVnnAkzA3tJGMfPMhcfZtcsUw9vwszn',
 ];
 const RETRY_THRESHOLD = 3;
 const CHUNK_SIZE = 221 * 1024;
