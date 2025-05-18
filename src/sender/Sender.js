@@ -3,7 +3,11 @@ import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
 import { chunkify } from '../node/utils';
 import { encode, decode } from '../buffer/codec';
-import { RETRY_THRESHOLD, CHUNK_SIZE } from '../node/constants';
+import {
+	RETRY_THRESHOLD,
+	CHUNK_SIZE,
+	MULTIADDR_SUFFIX,
+} from '../node/constants';
 import {
 	Input,
 	Button,
@@ -16,6 +20,7 @@ import {
 	SimpleGrid,
 	Card,
 	Avatar,
+	Heading,
 } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 import {
@@ -23,7 +28,9 @@ import {
 	MdFileUpload,
 	MdOutlineRemoveCircleOutline,
 	MdSend,
+	MdUpload,
 } from 'react-icons/md';
+import { loadWasm } from '../wasm/loadWasm';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -40,11 +47,19 @@ const Sender = () => {
 	const zipFileWasmRef = useRef();
 	const node = useSelector((state) => state.node);
 	const [genError, setGenError] = useState();
+	const fileUploadRef = useRef();
 
 	useEffect(() => {
-		zipFileWasmRef.current = window.zipFileWASM;
-		console.log(node);
-	}, [node]);
+		if (!window.zipFileWASM) {
+			loadWasm().then(() => {
+				zipFileWasmRef.current = window.zipFileWASM;
+				console.log(zipFileWasmRef.current);
+			});
+		} else if (!zipFileWasmRef.current) {
+			zipFileWasmRef.current = window.zipFileWASM;
+		}
+		console.log(zipFileWasmRef.current);
+	}, []);
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
@@ -184,7 +199,7 @@ const Sender = () => {
 		});
 
 		try {
-			const peerMA = multiaddr(`${peerAdd}`);
+			const peerMA = multiaddr(`${MULTIADDR_SUFFIX}${peerAdd}`);
 			if (fileNameKey) {
 				await sendOneFile(fileNameKey, files, peerMA);
 			}
@@ -217,7 +232,14 @@ const Sender = () => {
 	};
 
 	return (
-		<Stack>
+		<Stack align="center">
+			<Heading
+				size={['sm', 'md', 'lg', 'lg']}
+				textWrap="true"
+				color="fg.subtle"
+			>
+				Paste Receiver's Address
+			</Heading>
 			<Input
 				type="text"
 				value={peerAdd}
@@ -226,7 +248,7 @@ const Sender = () => {
 				padding="4"
 				size="xs"
 			/>
-			<Group align="center">
+			<Group>
 				<Input
 					type="file"
 					name="files"
@@ -234,7 +256,21 @@ const Sender = () => {
 					multiple
 					className="input-receiver"
 					size="xs"
+					display="none"
+					ref={fileUploadRef}
 				/>
+				<Button
+					size="xs"
+					onClick={() => {
+						fileUploadRef.current.click();
+					}}
+					variant="surface"
+				>
+					Upload
+					<Icon>
+						<MdUpload />
+					</Icon>
+				</Button>
 
 				<Button
 					size="xs"

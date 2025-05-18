@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { WEBRTC_CODE } from '../node/node';
 import {
 	Input,
 	Clipboard,
@@ -21,12 +20,7 @@ const Receiver = () => {
 	const [downloading] = useState(false);
 
 	useEffect(() => {
-		setAddresses(
-			node
-				?.getMultiaddrs()
-				.filter((addr) => addr.protoCodes().includes(WEBRTC_CODE))
-				.map((add) => add.toString())
-		);
+		setAddresses([node?.peerId.toString()]);
 	}, [node]);
 
 	const MainComp = (
@@ -43,7 +37,7 @@ const Receiver = () => {
 			{/* <Grid alignItems="center"> */}
 			{addresses && addresses.length ? (
 				addresses.map((address, i) => (
-					<Group key={address}>
+					<Group key={i + address}>
 						<Input
 							type="text"
 							value={address}

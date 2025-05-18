@@ -1,76 +1,27 @@
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import {
-	Box,
-	Button,
-	ButtonGroup,
-	Container,
-	Grid,
-	Icon,
-} from '@chakra-ui/react';
+import { Container, Grid, Icon, Tabs } from '@chakra-ui/react';
 import { useDispatch } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
 
 function App() {
-	const [active, setActive] = useState('');
 	const dispatch = useDispatch();
 
-	const MainComp = (
-		<>
-			<ButtonGroup
-				className="buttons"
-				padding={'5'}
-				align="center"
-				justify="center"
-			>
-				<Button
-					className="btn_send"
-					size="xs"
-					onClick={() => setActive('Send')}
-					variant="surface"
-				>
-					Share
-					<Icon>
-						<MdShare />
-					</Icon>
-				</Button>
-				<Button
-					className="btn_receive"
-					size="xs"
-					onClick={() => setActive('Receive')}
-					variant="surface"
-				>
-					Receive
-					<Icon>
-						<MdDownload />
-					</Icon>
-				</Button>
-			</ButtonGroup>
-			<Box>
-				{active === 'Send' ? (
-					<Sender />
-				) : active === '' ? (
-					<div />
-				) : (
-					<Receiver />
-				)}
-			</Box>
-		</>
-	);
-
 	useEffect(() => {
-		(async () => await loadWasm())();
+		loadWasm().then(() => {
+			console.log('Loaded WASM binaries');
+		});
 	}, []);
+
 	useEffect(() => {
 		let node = null;
 		(async () => {
 			node = await createNode();
-			console.log('Node id : ', node.peerId.toString());
 
 			dispatch(setNode(node));
 		})();
@@ -95,12 +46,34 @@ function App() {
 		>
 			<Grid
 				margin="auto"
-				padding={['8', '10', '12', '14']}
-				paddingBottom={['10', '12', '14', '16']}
+				paddingX={['6', '8', '10', '12']}
+				paddingBottom={['8', '10', '12', '14']}
+				// paddingBottom={['10', '12', '14', '16']}
 				boxShadow="0 0 8px rgba(255, 255, 255, 0.04)"
 				borderRadius="2xl"
 			>
-				{MainComp}
+				<Tabs.Root fitted defaultValue="Share" size="lg" width="full">
+					<Tabs.List>
+						<Tabs.Trigger value="Share">
+							Share
+							<Icon>
+								<MdShare />
+							</Icon>
+						</Tabs.Trigger>
+						<Tabs.Trigger value="Receive">
+							Receive
+							<Icon>
+								<MdDownload />
+							</Icon>
+						</Tabs.Trigger>
+					</Tabs.List>
+					<Tabs.Content value="Share">
+						<Sender />
+					</Tabs.Content>
+					<Tabs.Content value="Receive">
+						<Receiver />
+					</Tabs.Content>
+				</Tabs.Root>
 			</Grid>
 		</Container>
 	);
