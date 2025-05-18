@@ -4,6 +4,18 @@ import { pipe } from 'it-pipe';
 import { chunkify } from '../node/utils';
 import { encode, decode } from '../buffer/codec';
 import { RETRY_THRESHOLD, CHUNK_SIZE } from '../node/constants';
+import {
+	Input,
+	Button,
+	Group,
+	Text,
+	Stack,
+	ProgressCircle,
+	ButtonGroup,
+	Icon,
+} from '@chakra-ui/react';
+import { useSelector } from 'react-redux';
+import { MdOutlineRemoveCircleOutline, MdSend } from 'react-icons/md';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -11,17 +23,19 @@ const PROTOCOL = '/lftp/1.0';
  * @type {import('react').FC<{
  *   node: import('@libp2p/interface').Libp2p;}> Sender
  */
-const Sender = ({ node }) => {
+const Sender = () => {
 	const [files, setFiles] = useState({});
 	const [peerAdd, setPeerAdd] = useState('');
 	const [error, setError] = useState({});
 	const [progress, setProgress] = useState({});
 	const [sending, setSending] = useState({});
 	const zipFileWasmRef = useRef();
+	const node = useSelector((state) => state.node);
 
 	useEffect(() => {
 		zipFileWasmRef.current = window.zipFileWASM;
-	}, []);
+		console.log(node);
+	}, [node]);
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
@@ -201,52 +215,82 @@ const Sender = ({ node }) => {
 	};
 
 	return (
-		<div>
-			<div className="input-receiver">
-				<input
+		<Stack>
+			<Input
+				type="text"
+				value={peerAdd}
+				placeholder="Paste Receiver Address...."
+				onChange={(e) => setPeerAdd(e.target.value)}
+				padding="4"
+				size="xs"
+			/>
+			<Group className="">
+				<Input
 					type="file"
 					name="files"
 					onChange={handleFileChange}
 					multiple
+					className="input-receiver"
+					size="xs"
 				/>
-				<button type="button">Upload</button>
-			</div>
-			<div className="">
-				<input
-					type="text"
-					value={peerAdd}
-					placeholder="Receiver"
-					onChange={(e) => setPeerAdd(e.target.value)}
-				/>
-			</div>
-			<div className="">
-				<div className="">
-					<button
-						onClick={async () => {
-							const promiseArray = Object.keys(files).map(
-								(file) => send(file)
-							);
-							await Promise.all(promiseArray);
-						}}
-					>
-						Send All
-					</button>
-				</div>
+
+				<Button
+					size="xs"
+					onClick={async () => {
+						const promiseArray = Object.keys(files).map((file) =>
+							send(file)
+						);
+						await Promise.all(promiseArray);
+					}}
+					variant="surface"
+				>
+					Send
+					<Icon>
+						<MdSend />
+					</Icon>
+				</Button>
+			</Group>
+
+			<Stack paddingTop="8">
 				{Object.entries(files).map(([key, file], id) => (
-					<div className="" key={files.length + id + key}>
-						<li>{file.name}</li>
-						<button onClick={() => removeFile(key)}>X</button>
-						<button onClick={() => send(key)}>Send</button>
-						{sending[key] && `File sent ---> ${progress[key]} %`}
-						{error[key].status && error[key].msg}
-					</div>
+					<Group
+						className=""
+						key={files.length + id + key}
+						border="yellow"
+					>
+						<Input value={file.name} readOnly size="xs"></Input>
+
+						{sending[key] ? (
+							<ProgressCircle.Root
+								value={progress[key]}
+								size="md"
+							>
+								<ProgressCircle.Circle>
+									<ProgressCircle.Track />
+									<ProgressCircle.Range strokeLinecap="round" />
+								</ProgressCircle.Circle>
+							</ProgressCircle.Root>
+						) : (
+							<ButtonGroup>
+								<Button
+									size="xs"
+									onClick={() => removeFile(key)}
+									variant="surface"
+								>
+									Remove
+									<Icon>
+										<MdOutlineRemoveCircleOutline />
+									</Icon>
+								</Button>
+							</ButtonGroup>
+						)}
+						{error[key].status && (
+							<Text color="red.600">error[key].msg</Text>
+						)}
+					</Group>
 				))}
-			</div>
-			{/* <button type="button" onClick={send} disabled={!files || !peerAdd}>
-				Send
-			</button> */}
-			{/* {sending && 'Sending......'} */}
-		</div>
+			</Stack>
+		</Stack>
 	);
 };
 

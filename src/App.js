@@ -4,24 +4,61 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
+import { Button, ButtonGroup, Container, Icon } from '@chakra-ui/react';
+import { useDispatch } from 'react-redux';
+import { setNode } from './state/stateReducer';
+import { MdDownload, MdShare } from 'react-icons/md';
 
 function App() {
 	const [active, setActive] = useState('');
-	/** @type {ReturnType<typeof useState<import('libp2p').Libp2p>>} */
-	const [node, setNode] = useState();
+	const dispatch = useDispatch();
 
+	const MainComp = (
+		<>
+			<ButtonGroup className="buttons" padding={'5'}>
+				<Button
+					className="btn_send"
+					size="xs"
+					onClick={() => setActive('Send')}
+					variant="surface"
+				>
+					Share
+					<Icon>
+						<MdShare />
+					</Icon>
+				</Button>
+				<Button
+					className="btn_receive"
+					size="xs"
+					onClick={() => setActive('Receive')}
+					variant="surface"
+				>
+					Receive
+					<Icon>
+						<MdDownload />
+					</Icon>
+				</Button>
+			</ButtonGroup>
+			{active === 'Send' ? (
+				<Sender />
+			) : active === '' ? (
+				<div />
+			) : (
+				<Receiver />
+			)}
+		</>
+	);
+
+	useEffect(() => {
+		(async () => await loadWasm())();
+	}, []);
 	useEffect(() => {
 		let node = null;
 		(async () => {
-			await loadWasm();
 			node = await createNode();
 			console.log('Node id : ', node.peerId.toString());
-			console.log(
-				'Node id : ',
-				node.getMultiaddrs().map((v) => v.toString())
-			);
 
-			setNode(node);
+			dispatch(setNode(node));
 		})();
 
 		return () => {
@@ -32,27 +69,11 @@ function App() {
 			})();
 		};
 	}, []);
+
 	return (
-		<div className="App">
-			<div className="buttons">
-				<button className="btn_send" onClick={() => setActive('Send')}>
-					Send
-				</button>
-				<button
-					className="btn_receive"
-					onClick={() => setActive('Receive')}
-				>
-					Receive
-				</button>
-			</div>
-			{active === 'Send' ? (
-				<Sender node={node} />
-			) : active === '' ? (
-				<div />
-			) : (
-				<Receiver node={node} />
-			)}
-		</div>
+		<Container centerContent="true" fluid="true">
+			{MainComp}
+		</Container>
 	);
 }
 
