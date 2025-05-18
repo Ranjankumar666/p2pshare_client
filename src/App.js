@@ -4,7 +4,7 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import { Button, ButtonGroup, Container, Icon } from '@chakra-ui/react';
+import { Button, ButtonGroup, Center, Container, Icon } from '@chakra-ui/react';
 import { useDispatch } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
@@ -15,7 +15,7 @@ function App() {
 
 	const MainComp = (
 		<>
-			<ButtonGroup className="buttons" padding={'5'}>
+			<ButtonGroup className="buttons" padding={'5'} align="center">
 				<Button
 					className="btn_send"
 					size="xs"
@@ -68,11 +68,24 @@ function App() {
 				}
 			})();
 		};
-	}, []);
+	}, [dispatch]);
 
 	return (
-		<Container centerContent="true" fluid="true">
-			{MainComp}
+		<Container
+			width="100vw"
+			height="100vh"
+			centerContent="true"
+			margin="0"
+			padding="0"
+			fluid="true"
+		>
+			<Center
+				margin="auto"
+				padding="5"
+				boxShadow="0 0 8px rgba(255, 255, 255, 0.04)"
+			>
+				{MainComp}
+			</Center>
 		</Container>
 	);
 }

@@ -6,7 +6,6 @@ import {
 	Button,
 	Heading,
 	Group,
-	Grid,
 	Stack,
 	Spinner,
 } from '@chakra-ui/react';
@@ -40,7 +39,7 @@ const Receiver = () => {
 			{/* <Grid alignItems="center"> */}
 			{addresses && addresses.length ? (
 				addresses.map((address, i) => (
-					<Group>
+					<Group key={address}>
 						<Input
 							type="text"
 							value={address}
@@ -60,7 +59,9 @@ const Receiver = () => {
 					</Group>
 				))
 			) : (
-				<Spinner size="md" />
+				<Group justify="center">
+					<Spinner size="md" />
+				</Group>
 			)}
 			{/* </Grid> */}
 			{downloading && 'Downloading......'}

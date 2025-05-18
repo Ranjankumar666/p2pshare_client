@@ -13,9 +13,17 @@ import {
 	ProgressCircle,
 	ButtonGroup,
 	Icon,
+	SimpleGrid,
+	Card,
+	Avatar,
 } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
-import { MdClose, MdOutlineRemoveCircleOutline, MdSend } from 'react-icons/md';
+import {
+	MdClose,
+	MdFileUpload,
+	MdOutlineRemoveCircleOutline,
+	MdSend,
+} from 'react-icons/md';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -177,16 +185,7 @@ const Sender = () => {
 
 		try {
 			const peerMA = multiaddr(`${peerAdd}`);
-
-			// Convert all files to Uint8Arrays
-			// for (let fileName in files) {
-			// 	const arrayBuffer = await files[fileName].arrayBuffer();
-			// 	bytefiles[fileName] = new Uint8Array(arrayBuffer);
-			// }
-
-			// Loop through each file individually
 			if (fileNameKey) {
-				// await sendOneFile(fileNameKey, files, peerMA);
 				await sendOneFile(fileNameKey, files, peerMA);
 			}
 		} catch (error) {
@@ -227,7 +226,7 @@ const Sender = () => {
 				padding="4"
 				size="xs"
 			/>
-			<Group className="">
+			<Group align="center">
 				<Input
 					type="file"
 					name="files"
@@ -254,58 +253,71 @@ const Sender = () => {
 				</Button>
 			</Group>
 
-			<Stack paddingTop="8">
+			<SimpleGrid columns={[2, null, 3]} gap="5">
 				{Object.entries(files).map(([key, file], id) => (
-					<Group
+					<Card.Root
 						className=""
 						key={files.length + id + key}
-						border="yellow"
+						size="lg"
 					>
-						<Input value={file.name} readOnly size="xs"></Input>
+						<Card.Body gap="2">
+							<Avatar.Root size="md" shape="rounded">
+								<Icon size="xl">
+									<MdFileUpload />
+								</Icon>
+							</Avatar.Root>
 
-						{sending[key] ? (
-							<ProgressCircle.Root
-								value={progress[key]}
-								size="md"
+							<Text
+								textStyle="xs"
+								color="fg.subtle"
+								fontWeight="medium"
 							>
-								<ProgressCircle.Circle>
-									<ProgressCircle.Track />
-									<ProgressCircle.Range strokeLinecap="round" />
-								</ProgressCircle.Circle>
-							</ProgressCircle.Root>
-						) : (
-							<ButtonGroup>
-								<Button
-									size="xs"
-									onClick={() => removeFile(key)}
-									variant="surface"
+								{file.name}
+							</Text>
+						</Card.Body>
+
+						<Card.Footer>
+							{sending[key] ? (
+								<ProgressCircle.Root
+									value={progress[key]}
+									size="md"
 								>
-									Remove
-									<Icon>
-										<MdOutlineRemoveCircleOutline />
-									</Icon>
-								</Button>
-							</ButtonGroup>
-						)}
-						{error[key].status && (
-							<Text color="red.600">{error[key].msg}</Text>
-						)}
-					</Group>
+									<ProgressCircle.Circle>
+										<ProgressCircle.Track />
+										<ProgressCircle.Range strokeLinecap="round" />
+									</ProgressCircle.Circle>
+								</ProgressCircle.Root>
+							) : (
+								<ButtonGroup>
+									<Button
+										size="xs"
+										onClick={() => removeFile(key)}
+										variant="surface"
+									>
+										Remove
+										<Icon>
+											<MdOutlineRemoveCircleOutline />
+										</Icon>
+									</Button>
+								</ButtonGroup>
+							)}
+							{error[key].status && (
+								<Text color="red.600">{error[key].msg}</Text>
+							)}
+						</Card.Footer>
+					</Card.Root>
 				))}
-				{genError && (
-					<Group>
-						<Text color="red.600">{genError}</Text>
-						<Button
-							size="xs"
-							onClick={() => setGenError(undefined)}
-						>
-							<Icon>
-								<MdClose />
-							</Icon>
-						</Button>
-					</Group>
-				)}
-			</Stack>
+			</SimpleGrid>
+			{genError && (
+				<Group alignSelf="center">
+					<Text color="red.600">{genError}</Text>
+					<Button size="xs" onClick={() => setGenError(undefined)}>
+						<Icon>
+							<MdClose />
+						</Icon>
+					</Button>
+				</Group>
+			)}
 		</Stack>
 	);
 };
