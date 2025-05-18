@@ -4,7 +4,14 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import { Button, ButtonGroup, Center, Container, Icon } from '@chakra-ui/react';
+import {
+	Box,
+	Button,
+	ButtonGroup,
+	Container,
+	Grid,
+	Icon,
+} from '@chakra-ui/react';
 import { useDispatch } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
@@ -15,7 +22,12 @@ function App() {
 
 	const MainComp = (
 		<>
-			<ButtonGroup className="buttons" padding={'5'} align="center">
+			<ButtonGroup
+				className="buttons"
+				padding={'5'}
+				align="center"
+				justify="center"
+			>
 				<Button
 					className="btn_send"
 					size="xs"
@@ -39,13 +51,15 @@ function App() {
 					</Icon>
 				</Button>
 			</ButtonGroup>
-			{active === 'Send' ? (
-				<Sender />
-			) : active === '' ? (
-				<div />
-			) : (
-				<Receiver />
-			)}
+			<Box>
+				{active === 'Send' ? (
+					<Sender />
+				) : active === '' ? (
+					<div />
+				) : (
+					<Receiver />
+				)}
+			</Box>
 		</>
 	);
 
@@ -79,13 +93,15 @@ function App() {
 			padding="0"
 			fluid="true"
 		>
-			<Center
+			<Grid
 				margin="auto"
-				padding="5"
+				padding={['8', '10', '12', '14']}
+				paddingBottom={['10', '12', '14', '16']}
 				boxShadow="0 0 8px rgba(255, 255, 255, 0.04)"
+				borderRadius="2xl"
 			>
 				{MainComp}
-			</Center>
+			</Grid>
 		</Container>
 	);
 }

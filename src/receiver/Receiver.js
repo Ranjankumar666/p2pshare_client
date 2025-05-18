@@ -30,10 +30,14 @@ const Receiver = () => {
 	}, [node]);
 
 	const MainComp = (
-		<Stack>
+		<Stack align="center">
 			{/* <div className=""> */}
-			<Heading size={['sm', 'md', 'lg', 'xl']} textWrap="true">
-				Copy address and share to download files
+			<Heading
+				size={['sm', 'md', 'lg', 'lg']}
+				textWrap="true"
+				color="fg.subtle"
+			>
+				Share to download files
 			</Heading>
 			{/* </div> */}
 			{/* <Grid alignItems="center"> */}
