@@ -15,7 +15,7 @@ import {
 	Icon,
 } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
-import { MdOutlineRemoveCircleOutline, MdSend } from 'react-icons/md';
+import { MdClose, MdOutlineRemoveCircleOutline, MdSend } from 'react-icons/md';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -31,6 +31,7 @@ const Sender = () => {
 	const [sending, setSending] = useState({});
 	const zipFileWasmRef = useRef();
 	const node = useSelector((state) => state.node);
+	const [genError, setGenError] = useState();
 
 	useEffect(() => {
 		zipFileWasmRef.current = window.zipFileWASM;
@@ -99,7 +100,6 @@ const Sender = () => {
 
 		const fileData = zipFileWasmRef.current(singleFile);
 		// const fileData = await zipFiles(singleFile);
-		console.log(fileData);
 		const fileSize = fileData.byteLength;
 		const { chunks, hashes } = await chunkify(
 			fileData,
@@ -164,6 +164,8 @@ const Sender = () => {
 		await pipe(write, stream);
 		await pipe(stream, read);
 		await stream.close();
+
+		removeFile(fileName);
 	};
 
 	const send = async (fileNameKey) => {
@@ -198,7 +200,8 @@ const Sender = () => {
 
 				return newState;
 			});
-			console.error(error);
+			console.error('Error' + error);
+			setGenError(error.message);
 		} finally {
 			setSending((oldState) => {
 				const newState = { ...oldState };
@@ -285,10 +288,23 @@ const Sender = () => {
 							</ButtonGroup>
 						)}
 						{error[key].status && (
-							<Text color="red.600">error[key].msg</Text>
+							<Text color="red.600">{error[key].msg}</Text>
 						)}
 					</Group>
 				))}
+				{genError && (
+					<Group>
+						<Text color="red.600">{genError}</Text>
+						<Button
+							size="xs"
+							onClick={() => setGenError(undefined)}
+						>
+							<Icon>
+								<MdClose />
+							</Icon>
+						</Button>
+					</Group>
+				)}
 			</Stack>
 		</Stack>
 	);
