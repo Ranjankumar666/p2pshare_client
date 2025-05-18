@@ -8,6 +8,8 @@ import { Container, Grid, Icon, Tabs } from '@chakra-ui/react';
 import { useDispatch } from 'react-redux';
 import { setNode } from './state/stateReducer';
 import { MdDownload, MdShare } from 'react-icons/md';
+import { multiaddr } from '@multiformats/multiaddr';
+import { REMOTE_RELAY_NODE } from './node/constants';
 
 function App() {
 	const dispatch = useDispatch();
@@ -22,7 +24,9 @@ function App() {
 		let node = null;
 		(async () => {
 			node = await createNode();
+			await node.dial(multiaddr(REMOTE_RELAY_NODE));
 
+			console.log('Registered to Relay');
 			dispatch(setNode(node));
 		})();
 

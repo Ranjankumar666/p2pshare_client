@@ -53,7 +53,6 @@ const Sender = () => {
 		if (!window.zipFileWASM) {
 			loadWasm().then(() => {
 				zipFileWasmRef.current = window.zipFileWASM;
-				console.log(zipFileWasmRef.current);
 			});
 		} else if (!zipFileWasmRef.current) {
 			zipFileWasmRef.current = window.zipFileWASM;
@@ -289,7 +288,7 @@ const Sender = () => {
 				</Button>
 			</Group>
 
-			<SimpleGrid columns={[2, null, 3]} gap="5">
+			<SimpleGrid columns={[2, null, 3]} gap="2">
 				{Object.entries(files).map(([key, file], id) => (
 					<Card.Root
 						className=""
