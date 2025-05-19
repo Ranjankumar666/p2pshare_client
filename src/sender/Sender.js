@@ -129,7 +129,9 @@ const Sender = () => {
 			};
 		});
 
+		/** @type {import('@libp2p/interface').Stream} */
 		let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+		console.log(stream.protocol);
 		let sentBytes = 0;
 		let retries = 0;
 
@@ -151,7 +153,7 @@ const Sender = () => {
 				});
 				yield encode(0, { index, hash, chunk });
 
-				await new Promise((res) => setTimeout(res, 100));
+				// await new Promise((res) => setTimeout(res, 100));
 			}
 		};
 

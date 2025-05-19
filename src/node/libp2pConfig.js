@@ -64,10 +64,11 @@ const defaultConfig = {
 		denyInboundConnection: () => false,
 		denyDialPeer: () => false,
 		denyOutboundConnection: () => false,
+		denyInboundEncryptedConnection: () => false,
+		denyOutboundUpgradedConnection: () => false,
+		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
-		maxConnections: 50,
-		maxParallelDials: 10,
 		dialTimeout: 60 * 1000,
 	},
 };
