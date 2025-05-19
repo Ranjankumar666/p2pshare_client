@@ -17,7 +17,6 @@ import { useSelector } from 'react-redux';
 const Receiver = () => {
 	const node = useSelector((state) => state.node);
 	const [addresses, setAddresses] = useState();
-	const [downloading] = useState(false);
 
 	useEffect(() => {
 		setAddresses([node?.peerId.toString()]);
@@ -62,7 +61,6 @@ const Receiver = () => {
 				</Group>
 			)}
 			{/* </Grid> */}
-			{downloading && 'Downloading......'}
 		</Stack>
 	);
 

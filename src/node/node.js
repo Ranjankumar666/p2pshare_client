@@ -16,6 +16,7 @@ import {
 
 import { encode } from '../buffer/codec';
 import { multiaddr } from '@multiformats/multiaddr';
+import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
 const received = new Map();
@@ -35,7 +36,17 @@ const handleProtocolStream = async ({ connection, stream }) => {
 				yield encode(2, { indices: Array.from(failed) });
 			}, stream);
 		} else {
-			const blob = assembleZipChunks(received);
+			// const blob = assembleZipChunks(received);
+
+			const worker = new FileAssemblyWorker();
+			const blob = await new Promise((res) => {
+				worker.postMessage({
+					type: 'assemble',
+					data: received,
+				});
+
+				worker.onmessage = (ev) => res(ev.data);
+			});
 			handleFileDownload(blob);
 
 			await pipe(async function* () {

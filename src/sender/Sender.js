@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
-import { chunkify } from '../node/utils';
 import { encode, decode } from '../buffer/codec';
-import {
-	RETRY_THRESHOLD,
-	CHUNK_SIZE,
-	MULTIADDR_SUFFIX,
-} from '../node/constants';
+import { RETRY_THRESHOLD, MULTIADDR_SUFFIX } from '../node/constants';
 import {
 	Input,
 	Button,
@@ -31,6 +26,7 @@ import {
 	MdUpload,
 } from 'react-icons/md';
 import { loadWasm } from '../wasm/loadWasm';
+import FileCompressionWorker from '../workers/fileCompression.worker.js';
 
 const PROTOCOL = '/lftp/1.0';
 
@@ -119,14 +115,19 @@ const Sender = () => {
 		const arrayBuf = await bytefiles[fileName].arrayBuffer();
 		singleFile[fileName] = new Uint8Array(arrayBuf);
 
-		const fileData = zipFileWasmRef.current(singleFile);
-		// const fileData = await zipFiles(singleFile);
-		const fileSize = fileData.byteLength;
-		const { chunks, hashes } = await chunkify(
-			fileData,
-			fileSize,
-			CHUNK_SIZE
-		);
+		//do this ina different thread to make UI smooth
+		const worker = new FileCompressionWorker();
+
+		const { chunks, hashes, fileSize } = await new Promise((res) => {
+			worker.postMessage({
+				type: 'zip',
+				data: singleFile,
+			});
+
+			worker.onmessage = (ev) => {
+				res(ev.data);
+			};
+		});
 
 		let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
 		let sentBytes = 0;
@@ -246,7 +247,7 @@ const Sender = () => {
 				padding="4"
 				size="xs"
 			/>
-			<Group>
+			<Group alignSelf="flex-end">
 				<Input
 					type="file"
 					name="files"
@@ -264,7 +265,7 @@ const Sender = () => {
 					}}
 					variant="surface"
 				>
-					Upload
+					Add
 					<Icon>
 						<MdUpload />
 					</Icon>
@@ -279,6 +280,7 @@ const Sender = () => {
 						await Promise.all(promiseArray);
 					}}
 					variant="surface"
+					disabled={!Object.keys(files).length || !peerAdd.length}
 				>
 					Send
 					<Icon>
