@@ -8,11 +8,7 @@ import {
 	WEBRTC_CODE,
 	REMOTE_RELAY_NODE,
 } from './constants';
-import {
-	assembleZipChunks,
-	convertStreamToFile,
-	handleFileDownload,
-} from './utils';
+import { convertStreamToFile, handleFileDownload } from './utils';
 
 import { encode } from '../buffer/codec';
 import { multiaddr } from '@multiformats/multiaddr';
@@ -47,7 +43,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 
 				worker.onmessage = (ev) => res(ev.data);
 			});
-			handleFileDownload(blob);
+			await handleFileDownload(blob);
 
 			await pipe(async function* () {
 				yield encode(1);

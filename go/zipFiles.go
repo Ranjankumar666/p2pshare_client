@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"io"
 	"syscall/js"
 )
 
@@ -15,7 +16,7 @@ type FileProcess struct {
 func processFile(fileManager chan FileProcess, returnChannel chan []byte) {
 	var buf bytes.Buffer
 	zipper := zip.NewWriter(&buf)
-	
+
 	defer zipper.Close()
 
 	for fm := range fileManager {
@@ -53,6 +54,48 @@ func zipFiles(jsFiles js.Value) []byte {
 	res := <-zippedBufChannel
 
 	return res
+}
+
+func UnzipFilesWASM(this js.Value, args []js.Value) any {
+	blob := args[0]
+	zippedData := make([]byte, blob.Get("length").Int())
+
+	js.CopyBytesToGo(zippedData, blob)
+
+	reader, err := zip.NewReader(bytes.NewReader(zippedData), int64(len(zippedData)))
+
+	if err != nil {
+		js.Global().Get("console").Call("error", "Zip error:", err.Error())
+		return nil
+	}
+	jsMap := js.Global().Get("Map").New()
+
+	for _, file := range reader.File {
+		f, err := file.Open()
+
+		if err != nil {
+			js.Global().Get("console").Call("error", "File open error:", err.Error())
+			continue
+		}
+
+		var buf bytes.Buffer
+
+		if _, err := io.Copy(&buf, f); err != nil {
+			f.Close()
+			js.Global().Get("console").Call("error", "File read error:", err.Error())
+			continue
+
+		}
+
+		f.Close()
+
+		jsFileBytes := js.Global().Get("Uint8Array").New(buf.Len())
+		js.CopyBytesToJS(jsFileBytes, buf.Bytes())
+
+		jsMap.Call("set", file.Name, jsFileBytes)
+
+	}
+	return jsMap
 }
 
 func ZipFilesWASM(this js.Value, args []js.Value) any {

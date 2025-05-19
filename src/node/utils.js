@@ -97,18 +97,26 @@ const assembleZipChunks = (map) => {
 	});
 };
 
-const handleFileDownload = (fileBlob) => {
+const handleFileDownload = async (fileBlob) => {
 	// const url = URL.createObjectURL(blob);
-	const url = URL.createObjectURL(fileBlob);
-	const anchor = document.createElement('a');
-	anchor.href = url;
-	anchor.download = `file-${Date.now()}.zip`;
-	document.body.appendChild(anchor);
-	anchor.click();
+	const filesDownload = window.unzipFileWASM(
+		new Uint8Array(await fileBlob.arrayBuffer())
+	);
 
-	requestAnimationFrame(() => {
-		document.body.removeChild(anchor);
-		URL.revokeObjectURL(url);
+	console.log(filesDownload);
+	filesDownload.forEach((val, fileName) => {
+		const blob = new Blob([val]);
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = fileName;
+		document.body.appendChild(anchor);
+		anchor.click();
+
+		requestAnimationFrame(() => {
+			document.body.removeChild(anchor);
+			URL.revokeObjectURL(url);
+		});
 	});
 };
 
