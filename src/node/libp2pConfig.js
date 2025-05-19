@@ -10,6 +10,7 @@ import * as filters from '@libp2p/websockets/filters';
 
 import { BOOTSTRAP_NODES } from './constants';
 
+/** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
 	addresses: {
 		listen: ['/webrtc', '/p2p-circuit'],
@@ -67,6 +68,7 @@ const defaultConfig = {
 	connectionManager: {
 		maxConnections: 50,
 		maxParallelDials: 10,
+		dialTimeout: 60 * 1000,
 	},
 };
 

@@ -142,11 +142,10 @@ const Sender = () => {
 				const hash = hashes[index];
 
 				sentBytes += chunk.length;
+				const donePercent = ((sentBytes / fileSize) * 100).toFixed(2);
 				setProgress((oldState) => {
 					const newState = { ...oldState };
-					newState[fileName] = ((sentBytes / fileSize) * 100).toFixed(
-						2
-					);
+					newState[fileName] = donePercent;
 
 					return newState;
 				});
