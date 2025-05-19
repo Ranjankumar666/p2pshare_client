@@ -12,7 +12,7 @@ func main() {
 
 	sync.OnceFunc(func() {
 		zip.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-			return flate.NewWriter(w, flate.BestCompression)
+			return flate.NewWriter(w, flate.BestSpeed)
 		})
 	})
 
