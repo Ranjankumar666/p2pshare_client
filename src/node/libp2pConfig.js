@@ -16,13 +16,7 @@ const defaultConfig = {
 		listen: ['/webrtc', '/p2p-circuit'],
 	},
 	transports: [
-		circuitRelayTransport({
-			hop: { enabled: true, active: true },
-			advertise: true,
-			enabled: true,
-			discoveryRelays: 1,
-			reservationTTL: 60_000,
-		}),
+		circuitRelayTransport(),
 		// tcp(),
 		webSockets({
 			filter: filters.all,

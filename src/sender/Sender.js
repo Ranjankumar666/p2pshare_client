@@ -293,7 +293,7 @@ const Sender = () => {
 				<Group alignSelf="center">
 					<Text color="red.600">
 						Error:{' '}
-						{genError.lenght > 64
+						{genError.length > 64
 							? genError.substring(0, 64) + '....'
 							: genError}
 					</Text>

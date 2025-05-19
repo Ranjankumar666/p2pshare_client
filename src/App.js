@@ -4,16 +4,27 @@ import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
 import { loadWasm } from './wasm/loadWasm';
-import { Box, Container, Grid, Icon, Spinner, Tabs } from '@chakra-ui/react';
+import {
+	Box,
+	Button,
+	Container,
+	Grid,
+	Group,
+	Icon,
+	Spinner,
+	Tabs,
+	Text,
+} from '@chakra-ui/react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setNode } from './state/stateReducer';
-import { MdDownload, MdShare } from 'react-icons/md';
+import { delError, setErr, setNode } from './state/stateReducer';
+import { MdClose, MdDownload, MdShare } from 'react-icons/md';
 import { multiaddr } from '@multiformats/multiaddr';
 import { REMOTE_RELAY_NODE } from './node/constants';
 
 function App() {
 	const dispatch = useDispatch();
 	const node = useSelector((state) => state.node);
+	const error = useSelector((state) => state.err);
 
 	useEffect(() => {
 		loadWasm().then(() => {
@@ -24,10 +35,14 @@ function App() {
 	useEffect(() => {
 		let node = null;
 		(async () => {
-			node = await createNode();
-			await node.dial(multiaddr(REMOTE_RELAY_NODE));
-			console.log('Registered to Relay');
-			dispatch(setNode(node));
+			try {
+				node = await createNode();
+				await node.dial(multiaddr(REMOTE_RELAY_NODE));
+				console.log('Registered to Relay');
+				dispatch(setNode(node));
+			} catch (err) {
+				dispatch(setErr(err.message));
+			}
 		})();
 
 		return () => {
@@ -56,7 +71,26 @@ function App() {
 				boxShadow="0 0 8px rgba(255, 255, 255, 0.04)"
 				borderRadius="2xl"
 			>
-				{node ? (
+				{error && (
+					<Group alignSelf="center" justify="center" paddingY="2">
+						<Text color="red.600">
+							Error:{' '}
+							{error.length > 64
+								? error.substring(0, 64) + '....'
+								: error}
+						</Text>
+						<Button
+							size="xs"
+							onClick={() => dispatch(delError())}
+							variant="surface"
+						>
+							<Icon>
+								<MdClose />
+							</Icon>
+						</Button>
+					</Group>
+				)}
+				{node && (
 					<Tabs.Root
 						fitted
 						defaultValue="Share"
@@ -84,7 +118,8 @@ function App() {
 							<Receiver />
 						</Tabs.Content>
 					</Tabs.Root>
-				) : (
+				)}
+				{!error && !node && (
 					<Box paddingTop={['8', '10', '12', '14']}>
 						<Spinner />
 					</Box>

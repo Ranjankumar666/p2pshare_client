@@ -71,6 +71,8 @@ const createNode = async () => {
 	await node.start();
 	await node.dial(multiaddr(REMOTE_RELAY_NODE));
 	await waitUntilRelayReservation(node);
+
+	console.log(node.getMultiaddrs());
 	return node;
 };
 
