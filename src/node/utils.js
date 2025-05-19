@@ -57,7 +57,7 @@ const convertStreamToFile = async (stream, received, failed) => {
 			}
 
 			const { index, hash, chunk } = decode(rawChunk.bufs[0]);
-
+			console.log(index, hash);
 			const computedHash = await hashChunk(chunk);
 			if (hash !== computedHash) {
 				failed.add(index);

@@ -15,8 +15,6 @@ import { multiaddr } from '@multiformats/multiaddr';
 import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
-const received = new Map();
-const failed = new Set();
 
 /**
  *
@@ -24,6 +22,9 @@ const failed = new Set();
  * @type {import('@libp2p/interface').StreamHandler}
  */
 const handleProtocolStream = async ({ connection, stream }) => {
+	const received = new Map();
+	const failed = new Set();
+
 	try {
 		await convertStreamToFile(stream, received, failed);
 		if (failed.size !== 0) {
