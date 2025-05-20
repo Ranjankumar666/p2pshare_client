@@ -64,6 +64,7 @@ const defaultConfig = {
 		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
+		maxConnections: 50,
 		dialTimeout: 240 * 1000,
 		inboundUpgradeTimeout: 240 * 1000,
 		outboundStreamProtocolNegotiationTimeout: 60 * 1000,
