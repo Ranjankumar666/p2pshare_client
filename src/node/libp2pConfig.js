@@ -66,6 +66,7 @@ const defaultConfig = {
 	connectionManager: {
 		dialTimeout: 240 * 1000,
 		inboundUpgradeTimeout: 240 * 1000,
+		outboundStreamProtocolNegotiationTimeout: 60 * 1000,
 	},
 };
 

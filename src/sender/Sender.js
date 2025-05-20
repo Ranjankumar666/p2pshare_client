@@ -134,6 +134,7 @@ const Sender = () => {
 		let conn = await node.dial(peerMA);
 		console.log(conn.remoteAddr);
 		let stream = await conn.newStream([PROTOCOL]);
+		console.log(stream);
 		// /** @type {import('@libp2p/interface').Stream} */
 
 		// console.log();
