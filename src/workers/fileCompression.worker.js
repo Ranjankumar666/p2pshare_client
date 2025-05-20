@@ -26,7 +26,7 @@ function bufferToHex(buffer) {
 		.join('');
 }
 
-const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
+const chunkify = async (fileData, fileSize, chunkSize = 6 * 1024) => {
 	const chunks = [];
 	const hashes = [];
 
@@ -80,7 +80,14 @@ self.onmessage = async function (event) {
 		const res = await chunkify(compressed, compressed.byteLength);
 		self.postMessage({ ...res, fileSize: compressed.byteLength });
 	} else if (type === 'assemble') {
-		const blob = assembleZipChunks(data);
-		self.postMessage(blob);
+		const blobs = [];
+
+		data.forEach((byteArrayMap) => {
+			console.log(byteArrayMap);
+			const blob = assembleZipChunks(byteArrayMap);
+			blobs.push(blob);
+		});
+
+		self.postMessage(blobs);
 	}
 };

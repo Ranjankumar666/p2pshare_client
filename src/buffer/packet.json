@@ -3,7 +3,12 @@
 		"Packet": {
 			"oneofs": {
 				"payload": {
-					"oneof": ["chunkPacket", "ackPacket", "retryPacket"]
+					"oneof": [
+						"chunkPacket",
+						"ackPacket",
+						"retryPacket",
+						"endOfTransferPacket"
+					]
 				}
 			},
 			"fields": {
@@ -22,6 +27,10 @@
 				"retryPacket": {
 					"type": "RetryPacket",
 					"id": 4
+				},
+				"endOfTransferPacket": {
+					"type": "EndOfTransferPacket",
+					"id": 5
 				}
 			}
 		},
@@ -38,6 +47,10 @@
 				"chunk": {
 					"type": "bytes",
 					"id": 3
+				},
+				"filename": {
+					"type": "string",
+					"id": 4
 				}
 			}
 		},
@@ -52,6 +65,9 @@
 					"id": 1
 				}
 			}
+		},
+		"EndOfTransferPacket": {
+			"fields": {}
 		}
 	}
 }

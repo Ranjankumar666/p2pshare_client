@@ -1,6 +1,7 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import { decode } from '../buffer/codec';
+import { decode, encode, END } from '../buffer/codec';
+import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 // const encode = (index, hash, chunk) => {
 // 	const indexBuffer = new Uint32Array([index]); // 4 bytes
@@ -48,7 +49,7 @@ import { decode } from '../buffer/codec';
  */
 const convertStreamToFile = async (stream, received, failed) => {
 	// let receivedByteSize = 0;
-
+	let streamtype;
 	await pipe(stream, async function process(source) {
 		for await (const rawChunk of source) {
 			if (!(rawChunk.bufs[0] instanceof Uint8Array)) {
@@ -56,8 +57,18 @@ const convertStreamToFile = async (stream, received, failed) => {
 				continue;
 			}
 
-			const { index, hash, chunk } = decode(rawChunk.bufs[0]);
-			console.log(index, hash);
+			const { type, index, hash, chunk, filename } = decode(
+				rawChunk.bufs[0]
+			);
+
+			streamtype = type;
+			if (type === END) {
+				console.log('Received: EOT packet ');
+				await assembleAndDownload(received, encode, stream);
+				return;
+			}
+			console.log(index, hash, filename);
+
 			const computedHash = await hashChunk(chunk);
 			if (hash !== computedHash) {
 				failed.add(index);
@@ -65,11 +76,45 @@ const convertStreamToFile = async (stream, received, failed) => {
 				if (failed.has(index)) {
 					failed.delete(index);
 				}
-				received.set(index, chunk);
+
+				if (!received.has(filename)) {
+					received.set(filename, new Map());
+				}
+				received.get(filename).set(index, chunk);
 			}
+
+			return;
 		}
 	});
+
+	return streamtype;
 };
+
+const assembleAndDownload = async (received, encode, stream) => {
+	console.log('File Download initiated');
+	const worker = new FileAssemblyWorker();
+	console.log(received);
+
+	const blobs = await new Promise((res) => {
+		worker.postMessage({
+			type: 'assemble',
+			data: received,
+		});
+
+		worker.onmessage = (ev) => res(ev.data);
+	});
+
+	console.log(blobs);
+	// await Promise.all(blobs.map((blob) => handleFileDownload(blob)));
+	for (let blob of blobs) {
+		await handleFileDownload(blob);
+	}
+
+	await pipe(async function* () {
+		yield encode(1);
+	}, stream);
+};
+
 const assembleZipChunks = (map) => {
 	// 1️⃣ Sort chunks by index
 	const sortedIndices = Array.from(map.keys()).sort((a, b) => a - b);
@@ -99,6 +144,7 @@ const assembleZipChunks = (map) => {
 
 const handleFileDownload = async (fileBlob) => {
 	// const url = URL.createObjectURL(blob);
+
 	const filesDownload = window.unzipFileWASM(
 		new Uint8Array(await fileBlob.arrayBuffer())
 	);

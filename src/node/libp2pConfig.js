@@ -33,6 +33,7 @@ const defaultConfig = {
 				maxBufferedAmount: 32 * 1024 * 1024,
 				closeTimeout: 30 * 1000,
 				openTimeout: 30 * 1000,
+				bufferedAmountLowEventTimeout: 60 * 1000,
 			},
 			inboundConnectionTimeout: 240 * 1000,
 		}),
@@ -65,10 +66,7 @@ const defaultConfig = {
 		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
-		maxConnections: 50,
-		dialTimeout: 240 * 1000,
-		inboundUpgradeTimeout: 240 * 1000,
-		outboundStreamProtocolNegotiationTimeout: 60 * 1000,
+		maxConnections: 1000000,
 	},
 };
 

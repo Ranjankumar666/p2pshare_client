@@ -8,47 +8,34 @@ import {
 	WEBRTC_CODE,
 	REMOTE_RELAY_NODE,
 } from './constants';
-import { convertStreamToFile, handleFileDownload } from './utils';
+import { convertStreamToFile } from './utils';
 
-import { encode } from '../buffer/codec';
+import { encode, END } from '../buffer/codec';
 import { multiaddr } from '@multiformats/multiaddr';
-import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
-
+const received = new Map();
+const failed = new Set();
 /**
  *
  *
  * @type {import('@libp2p/interface').StreamHandler}
  */
 const handleProtocolStream = async ({ connection, stream }) => {
-	const received = new Map();
-	const failed = new Set();
-
 	try {
-		await convertStreamToFile(stream, received, failed);
+		const type = await convertStreamToFile(stream, received, failed);
+		console.log(type);
 		if (failed.size !== 0) {
 			//
 			await pipe(async function* () {
 				yield encode(2, { indices: Array.from(failed) });
 			}, stream);
 		} else {
-			// const blob = assembleZipChunks(received);
-
-			const worker = new FileAssemblyWorker();
-			const blob = await new Promise((res) => {
-				worker.postMessage({
-					type: 'assemble',
-					data: received,
-				});
-
-				worker.onmessage = (ev) => res(ev.data);
-			});
-			await handleFileDownload(blob);
-
-			await pipe(async function* () {
-				yield encode(1);
-			}, stream);
+			if (type !== END) {
+				await pipe(async function* () {
+					yield encode(1);
+				}, stream);
+			}
 		}
 	} catch (error) {
 		console.error('Error handling protocol stream:', error);

@@ -4,20 +4,27 @@ import packetJson from './packet.json';
 const root = protobuf.Root.fromJSON(packetJson);
 const Packet = root.lookupType('Packet');
 
+export const CHUNK = 0;
+export const ACK = 1;
+export const RETRY = 2;
+export const END = 3;
+
 /**
  * @param {number} index
- * @param {stinf} hash
+ * @param {string} hash
  * @param {Uint8Array<any>} chunk
+ * @param {string} filename
  * @return {Uint8Array}
  */
-const encodeChunkPacket = (index, hash, chunk) => {
+const encodeChunkPacket = (index, hash, chunk, filename) => {
 	return Packet.encode(
 		Packet.create({
-			type: 0,
+			type: CHUNK,
 			chunkPacket: {
 				index,
 				hash,
 				chunk,
+				filename,
 			},
 		})
 	).finish();
@@ -31,7 +38,7 @@ const encodeChunkPacket = (index, hash, chunk) => {
 const encodeAckPacket = () => {
 	return Packet.encode(
 		Packet.create({
-			type: 1,
+			type: ACK,
 			ackPacket: {},
 		})
 	).finish();
@@ -45,10 +52,24 @@ const encodeAckPacket = () => {
 const encodeRetryPacket = (indices) => {
 	return Packet.encode(
 		Packet.create({
-			type: 2,
+			type: RETRY,
 			retryPacket: {
 				indices,
 			},
+		})
+	).finish();
+};
+
+/**
+ *
+ *
+ * @return {Uint8Array}
+ */
+const encodeEndOfTransferPacket = () => {
+	return Packet.encode(
+		Packet.create({
+			type: END,
+			endOfTransferPacket: {},
 		})
 	).finish();
 };
@@ -62,17 +83,25 @@ const encodeRetryPacket = (indices) => {
  *  hash?: string;
  *  chunk?: Uint8Array<any>;
  *  indices? : Array<number>;
+ *  filename?: string;
  * }} [data={}]
  * @return {*}
  */
 const encode = (type, data = {}) => {
 	switch (type) {
-		case 0:
-			return encodeChunkPacket(data.index, data.hash, data.chunk);
-		case 1:
+		case CHUNK:
+			return encodeChunkPacket(
+				data.index,
+				data.hash,
+				data.chunk,
+				data.filename
+			);
+		case ACK:
 			return encodeAckPacket();
-		case 2:
+		case RETRY:
 			return encodeRetryPacket(data.indices);
+		case END:
+			return encodeEndOfTransferPacket();
 		default:
 			throw new Error(`Unknown packet type: ${type}`);
 	}
@@ -88,6 +117,7 @@ const decode = (chunkPacket) => {
 				index: decoded.chunkPacket.index,
 				hash: decoded.chunkPacket.hash,
 				chunk: decoded.chunkPacket.chunk,
+				filename: decoded.chunkPacket.filename,
 			};
 		case 1: // Ack Packet
 			return {
@@ -97,6 +127,10 @@ const decode = (chunkPacket) => {
 			return {
 				type: decoded.type,
 				indices: decoded.retryPacket.indices,
+			};
+		case 3:
+			return {
+				type: decoded.type,
 			};
 		default:
 			throw new Error(`Unknown packet type: ${decoded.type}`);

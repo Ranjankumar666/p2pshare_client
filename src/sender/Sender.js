@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
-import { encode, decode } from '../buffer/codec';
+import { encode, decode, END, CHUNK } from '../buffer/codec';
 import { RETRY_THRESHOLD, MULTIADDR_SUFFIX } from '../node/constants';
 import {
 	Input,
@@ -130,25 +130,25 @@ const Sender = () => {
 				res(ev.data);
 			};
 		});
+		console.log(chunks.length);
 
-		let conn = await node.dial(peerMA);
-		console.log(conn.remoteAddr);
-		let stream = await conn.newStream([PROTOCOL]);
-		console.log(stream);
-		// /** @type {import('@libp2p/interface').Stream} */
+		for (let index = 0; index < chunks.length; index += 1) {
+			let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+			console.log(stream);
+			// /** @type {import('@libp2p/interface').Stream} */
 
-		// console.log();
-		console.log(stream.protocol);
-		let sentBytes = 0;
-		let retries = 0;
+			let sentBytes = 0;
+			let retries = 0;
 
-		const stack = chunks.map((_, index) => index);
+			const stack = [index];
 
-		const write = async function* () {
-			while (stack.length > 0) {
-				const index = stack.pop();
-				const chunk = chunks[index];
-				const hash = hashes[index];
+			const write = async function* () {
+				// while (stack.length > 0) {
+
+				// const idx = stack.pop();
+				const idx = index;
+				const chunk = chunks[idx];
+				const hash = hashes[idx];
 
 				sentBytes += chunk.length;
 				const donePercent = ((sentBytes / fileSize) * 100).toFixed(2);
@@ -158,44 +158,51 @@ const Sender = () => {
 
 					return newState;
 				});
-				yield encode(0, { index, hash, chunk });
-
+				yield encode(CHUNK, {
+					index: idx,
+					hash,
+					chunk,
+					filename: fileName,
+				});
+				// }
 				// await new Promise((res) => setTimeout(res, 100));
-			}
-		};
+				// }
+			};
 
-		const read = async function (source) {
-			for await (const rawChunk of source) {
-				const decodedChunk = decode(rawChunk.bufs[0]);
+			const read = async function (source) {
+				for await (const rawChunk of source) {
+					const decodedChunk = decode(rawChunk.bufs[0]);
 
-				if (decodedChunk.type === 1) {
-					console.log(`✅ File ${fileName} sent successfully`);
+					if (decodedChunk.type === 1) {
+						console.log(
+							`✅ Chunk ${index} for ${fileName} sent successfully`
+						);
+						return;
+					}
+
+					console.log(
+						`🔁 Retry requested for ${fileName}:`,
+						decodedChunk.indices
+					);
+					decodedChunk.indices.forEach((idx) => stack.push(idx));
+					break;
+				}
+
+				if (++retries > RETRY_THRESHOLD) {
+					console.warn(`⚠️ Retry threshold exceeded for ${fileName}`);
 					return;
 				}
 
-				console.log(
-					`🔁 Retry requested for ${fileName}:`,
-					decodedChunk.indices
-				);
-				decodedChunk.indices.forEach((idx) => stack.push(idx));
-				break;
-			}
+				stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+				await pipe(write, stream);
+				await pipe(stream, read);
+			};
 
-			if (++retries > RETRY_THRESHOLD) {
-				console.warn(`⚠️ Retry threshold exceeded for ${fileName}`);
-				return;
-			}
-
-			stream = await node.dialProtocol(peerMA, [PROTOCOL]);
 			await pipe(write, stream);
 			await pipe(stream, read);
-		};
-
-		await pipe(write, stream);
-		await pipe(stream, read);
-		await stream.close();
-		await conn.close();
-		console.log(`✅ Connection closed for ${fileName}`);
+			await stream.close();
+			console.log(`✅ Connection closed `);
+		}
 
 		removeFile(fileName);
 	};
@@ -284,10 +291,35 @@ const Sender = () => {
 				<Button
 					size="xs"
 					onClick={async () => {
-						const promiseArray = Object.keys(files).map((file) =>
-							send(file)
+						const promiseArray = Object.keys(files).map(
+							async (file) => send(file)
 						);
+
+						// Object.keys(files).forEach(
+						// 	async (file) => await send(file)
+						// );
 						await Promise.all(promiseArray);
+						const peerMA = multiaddr(
+							`${MULTIADDR_SUFFIX}${peerAdd}`
+						);
+						const stream = await node.dialProtocol(peerMA, [
+							PROTOCOL,
+						]);
+
+						await pipe(async function* () {
+							yield encode(END);
+						}, stream);
+
+						await pipe(stream, async function (source) {
+							for await (const rawChunk of source) {
+								const decodedChunk = decode(rawChunk.bufs[0]);
+
+								if (decodedChunk.type === 1) {
+									console.log(`✅ Transferred successfully`);
+									return;
+								}
+							}
+						});
 					}}
 					variant="surface"
 					disabled={!Object.keys(files).length || !peerAdd.length}
