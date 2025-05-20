@@ -16,7 +16,7 @@ const defaultConfig = {
 		listen: ['/webrtc', '/p2p-circuit'],
 	},
 	transports: [
-		circuitRelayTransport(),
+		circuitRelayTransport({}),
 		// tcp(),
 		webSockets({
 			filter: filters.all,
@@ -32,6 +32,7 @@ const defaultConfig = {
 				maxMessageSize: 256 * 1024,
 				maxBufferedAmount: 32 * 1024 * 1024,
 			},
+			inboundConnectionTimeout: 240 * 1000,
 		}),
 	],
 	connectionEncrypters: [noise()],

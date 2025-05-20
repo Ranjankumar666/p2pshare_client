@@ -41,6 +41,8 @@ const Sender = () => {
 	const [progress, setProgress] = useState({});
 	const [sending, setSending] = useState({});
 	const zipFileWasmRef = useRef();
+
+	/** @type {import('@libp2p/interface').Libp2p} */
 	const node = useSelector((state) => state.node);
 	const [genError, setGenError] = useState();
 	const fileUploadRef = useRef();
@@ -129,8 +131,12 @@ const Sender = () => {
 			};
 		});
 
-		/** @type {import('@libp2p/interface').Stream} */
-		let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+		let conn = await node.dial(peerMA);
+		console.log(conn.remoteAddr);
+		let stream = await conn.newStream([PROTOCOL]);
+		// /** @type {import('@libp2p/interface').Stream} */
+
+		// console.log();
 		console.log(stream.protocol);
 		let sentBytes = 0;
 		let retries = 0;
@@ -187,6 +193,8 @@ const Sender = () => {
 		await pipe(write, stream);
 		await pipe(stream, read);
 		await stream.close();
+		await conn.close();
+		console.log(`✅ Connection closed for ${fileName}`);
 
 		removeFile(fileName);
 	};
