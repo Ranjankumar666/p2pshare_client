@@ -151,7 +151,7 @@ const Sender = () => {
 				const hash = hashes[idx];
 
 				sentBytes += chunk.length;
-				const donePercent = ((sentBytes / fileSize) * 100).toFixed(2);
+				const donePercent = ((sentBytes / fileSize) * 100).toFixed(1);
 				setProgress((oldState) => {
 					const newState = { ...oldState };
 					newState[fileName] = donePercent;
@@ -381,7 +381,10 @@ const Sender = () => {
 										</ProgressCircle.Circle>
 									</ProgressCircle.Root>
 									<Text size="md">
-										{progress[file.name]} %
+										{progress[file.name] < 10
+											? '0' + progress[file.name]
+											: progress[file.name]}{' '}
+										%
 									</Text>
 								</>
 							) : (
