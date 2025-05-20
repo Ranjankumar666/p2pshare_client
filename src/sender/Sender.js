@@ -381,7 +381,8 @@ const Sender = () => {
 										</ProgressCircle.Circle>
 									</ProgressCircle.Root>
 									<Text size="md">
-										{progress[file.name] < 10
+										{`${progress[file.name]}`.length ===
+											1 && progress[file.name] !== 0
 											? '0' + progress[file.name]
 											: progress[file.name]}{' '}
 										%
