@@ -31,6 +31,8 @@ const defaultConfig = {
 			dataChannel: {
 				maxMessageSize: 256 * 1024,
 				maxBufferedAmount: 32 * 1024 * 1024,
+				closeTimeout: 30 * 1000,
+				openTimeout: 30 * 1000,
 			},
 			inboundConnectionTimeout: 240 * 1000,
 		}),
@@ -41,7 +43,6 @@ const defaultConfig = {
 			maxInboundStreams: 2048,
 			maxOutboundStreams: 2048,
 			maxMessageSize: 1024 * 1024 * 1024 * 16,
-
 			// maxStreamWindowSize
 		}),
 	],
