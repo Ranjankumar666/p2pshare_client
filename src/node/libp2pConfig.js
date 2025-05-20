@@ -64,7 +64,8 @@ const defaultConfig = {
 		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
-		dialTimeout: 60 * 1000,
+		dialTimeout: 240 * 1000,
+		inboundUpgradeTimeout: 240 * 1000,
 	},
 };
 
