@@ -132,12 +132,12 @@ const Sender = () => {
 		});
 		console.log(chunks.length);
 
+		let sentBytes = 0;
+
 		for (let index = 0; index < chunks.length; index += 1) {
 			let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
-			console.log(stream);
 			// /** @type {import('@libp2p/interface').Stream} */
 
-			let sentBytes = 0;
 			let retries = 0;
 
 			const stack = [index];
@@ -174,9 +174,6 @@ const Sender = () => {
 					const decodedChunk = decode(rawChunk.bufs[0]);
 
 					if (decodedChunk.type === 1) {
-						console.log(
-							`✅ Chunk ${index} for ${fileName} sent successfully`
-						);
 						return;
 					}
 
@@ -201,7 +198,7 @@ const Sender = () => {
 			await pipe(write, stream);
 			await pipe(stream, read);
 			await stream.close();
-			console.log(`✅ Connection closed `);
+			// console.log(`✅ Connection closed `);
 		}
 
 		removeFile(fileName);
@@ -291,8 +288,8 @@ const Sender = () => {
 				<Button
 					size="xs"
 					onClick={async () => {
-						const promiseArray = Object.keys(files).map(
-							async (file) => send(file)
+						const promiseArray = Object.keys(files).map((file) =>
+							send(file)
 						);
 
 						// Object.keys(files).forEach(
@@ -320,6 +317,8 @@ const Sender = () => {
 								}
 							}
 						});
+
+						await stream.close();
 					}}
 					variant="surface"
 					disabled={!Object.keys(files).length || !peerAdd.length}
@@ -373,16 +372,18 @@ const Sender = () => {
 						</Card.Body>
 
 						<Card.Footer>
-							{sending[key] ? (
-								<ProgressCircle.Root
-									value={progress[key]}
-									size="md"
-								>
-									<ProgressCircle.Circle>
-										<ProgressCircle.Track />
-										<ProgressCircle.Range strokeLinecap="round" />
-									</ProgressCircle.Circle>
-								</ProgressCircle.Root>
+							{sending[file.name] ? (
+								<>
+									<ProgressCircle.Root value={null} size="xs">
+										<ProgressCircle.Circle>
+											<ProgressCircle.Track />
+											<ProgressCircle.Range strokeLinecap="round" />
+										</ProgressCircle.Circle>
+									</ProgressCircle.Root>
+									<Text size="md">
+										{progress[file.name]} %
+									</Text>
+								</>
 							) : (
 								<ButtonGroup>
 									<Button

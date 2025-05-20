@@ -26,7 +26,7 @@ function bufferToHex(buffer) {
 		.join('');
 }
 
-const chunkify = async (fileData, fileSize, chunkSize = 6 * 1024) => {
+const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
 	const chunks = [];
 	const hashes = [];
 

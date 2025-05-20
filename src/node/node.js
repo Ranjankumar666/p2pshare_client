@@ -24,7 +24,6 @@ const failed = new Set();
 const handleProtocolStream = async ({ connection, stream }) => {
 	try {
 		const type = await convertStreamToFile(stream, received, failed);
-		console.log(type);
 		if (failed.size !== 0) {
 			//
 			await pipe(async function* () {

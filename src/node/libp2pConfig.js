@@ -66,7 +66,14 @@ const defaultConfig = {
 		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
-		maxConnections: 1000000,
+		maxConnections: 10000000,
+		dialTimeout: 60 * 1000,
+		maxPeerAddrsToDial: 10000000,
+		maxIncomingPendingConnections: 1000000,
+		maxParallelDials: 10000000,
+		inboundStreamProtocolNegotiationTimeout: 30 * 1000,
+		inboundConnectionThreshold: 10000,
+		outboundStreamProtocolNegotiationTimeout: 30 * 1000,
 	},
 };
 

@@ -67,7 +67,6 @@ const convertStreamToFile = async (stream, received, failed) => {
 				await assembleAndDownload(received, encode, stream);
 				return;
 			}
-			console.log(index, hash, filename);
 
 			const computedHash = await hashChunk(chunk);
 			if (hash !== computedHash) {
@@ -93,7 +92,6 @@ const convertStreamToFile = async (stream, received, failed) => {
 const assembleAndDownload = async (received, encode, stream) => {
 	console.log('File Download initiated');
 	const worker = new FileAssemblyWorker();
-	console.log(received);
 
 	const blobs = await new Promise((res) => {
 		worker.postMessage({
