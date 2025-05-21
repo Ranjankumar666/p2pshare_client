@@ -135,7 +135,9 @@ const Sender = () => {
 		let sentBytes = 0;
 
 		for (let index = 0; index < chunks.length; index += 1) {
-			let stream = await node.dialProtocol(peerMA, [PROTOCOL]);
+			let stream = await node.dialProtocol(peerMA, [PROTOCOL], {
+				runOnLimitedConnection: true,
+			});
 			// /** @type {import('@libp2p/interface').Stream} */
 
 			let retries = 0;
@@ -301,9 +303,13 @@ const Sender = () => {
 						// 	async (file) => await send(file)
 						// );
 						await Promise.all(promiseArray);
-						const stream = await node.dialProtocol(peerMA, [
-							PROTOCOL,
-						]);
+						const stream = await node.dialProtocol(
+							peerMA,
+							[PROTOCOL],
+							{
+								runOnLimitedConnection: true,
+							}
+						);
 
 						await pipe(async function* () {
 							yield encode(END);
