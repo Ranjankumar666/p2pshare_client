@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
-import { encode, decode, END, CHUNK } from '../buffer/codec';
-import {
-	RETRY_THRESHOLD,
-	PROTOCOL,
-	getRelayedMultiAddr,
-} from '../node/constants';
+import { encode, decode, END, CHUNK, START } from '../buffer/codec';
+import { PROTOCOL, getRelayedMultiAddr } from '../node/constants';
 import {
 	Input,
 	Button,
@@ -30,6 +26,7 @@ import {
 } from 'react-icons/md';
 import { loadWasm } from '../wasm/loadWasm';
 import FileCompressionWorker from '../workers/fileCompression.worker.js';
+import { dialProtocol } from '../node/node.js';
 
 /**
  * @type {import('react').FC<{
@@ -132,17 +129,10 @@ const Sender = () => {
 			};
 		});
 
-		let sentBytes = 0;
+		let sentBytes = [0];
 
 		for (let index = 0; index < chunks.length; index += 1) {
-			let stream = await node.dialProtocol(peerMA, [PROTOCOL], {
-				runOnLimitedConnection: true,
-			});
-			// /** @type {import('@libp2p/interface').Stream} */
-
-			let retries = 0;
-
-			const stack = [index];
+			let stream = await dialProtocol(node, peerMA);
 
 			const write = async function* () {
 				// while (stack.length > 0) {
@@ -152,8 +142,11 @@ const Sender = () => {
 				const chunk = chunks[idx];
 				const hash = hashes[idx];
 
-				sentBytes += chunk.length;
-				const donePercent = ((sentBytes / fileSize) * 100).toFixed(1);
+				sentBytes[0] += chunk.length;
+				const donePercent = ((sentBytes[0] / fileSize) * 100).toFixed(
+					1
+				);
+
 				setProgress((oldState) => {
 					const newState = { ...oldState };
 					newState[fileName] = donePercent;
@@ -183,13 +176,6 @@ const Sender = () => {
 						`🔁 Retry requested for ${fileName}:`,
 						decodedChunk.indices
 					);
-					decodedChunk.indices.forEach((idx) => stack.push(idx));
-					break;
-				}
-
-				if (++retries > RETRY_THRESHOLD) {
-					console.warn(`⚠️ Retry threshold exceeded for ${fileName}`);
-					return;
 				}
 
 				stream = await node.dialProtocol(peerMA, [PROTOCOL]);
@@ -292,24 +278,21 @@ const Sender = () => {
 					size="xs"
 					onClick={async () => {
 						const peerMA = getRelayedMultiAddr(peerAdd);
-						const rtt = await node.services.ping.ping(peerMA);
-						console.log('RTT for the receiver: ' + rtt);
+						// Start
+						let stream = await dialProtocol(node, peerMA);
+						await pipe(async function* () {
+							yield encode(START);
+						}, stream);
 
+						// Send packets
 						const promiseArray = Object.keys(files).map((file) =>
 							send(file)
 						);
 
-						// Object.keys(files).forEach(
-						// 	async (file) => await send(file)
-						// );
 						await Promise.all(promiseArray);
-						const stream = await node.dialProtocol(
-							peerMA,
-							[PROTOCOL],
-							{
-								runOnLimitedConnection: true,
-							}
-						);
+
+						// End
+						stream = await dialProtocol(node, peerMA);
 
 						await pipe(async function* () {
 							yield encode(END);

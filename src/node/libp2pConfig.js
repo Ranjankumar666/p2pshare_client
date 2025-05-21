@@ -75,9 +75,9 @@ const defaultConfig = {
 		maxPeerAddrsToDial: 10000000,
 		maxIncomingPendingConnections: 1000000,
 		maxParallelDials: 10000000,
-		inboundStreamProtocolNegotiationTimeout: 30 * 1000,
+		inboundStreamProtocolNegotiationTimeout: 120 * 1000,
 		inboundConnectionThreshold: 10000,
-		outboundStreamProtocolNegotiationTimeout: 30 * 1000,
+		outboundStreamProtocolNegotiationTimeout: 120 * 1000,
 	},
 };
 

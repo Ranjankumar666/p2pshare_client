@@ -2,18 +2,15 @@ import { createLibp2p } from 'libp2p';
 import { defaultConfig } from './libp2pConfig';
 import { pipe } from 'it-pipe';
 
-import {
-	PROTOCOL,
-	BOOTSTRAP_NODES,
-	WEBRTC_CODE,
-	REMOTE_RELAY_NODE,
-} from './constants';
+import { PROTOCOL, WEBRTC_CODE, REMOTE_RELAY_NODE } from './constants';
 import { convertStreamToFile } from './utils';
 
-import { encode, END } from '../buffer/codec';
+import { encode, END, START } from '../buffer/codec';
 import { multiaddr } from '@multiformats/multiaddr';
+import { store } from '../state/store';
+import { setStartDownload } from '../state/stateReducer';
 
-const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
+export const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
 const received = new Map();
 const failed = new Set();
 /**
@@ -30,7 +27,11 @@ const handleProtocolStream = async ({ connection, stream }) => {
 				yield encode(2, { indices: Array.from(failed) });
 			}, stream);
 		} else {
-			if (type !== END) {
+			if (type === END) {
+				store.dispatch(setStartDownload(false));
+			} else if (type === START) {
+				store.dispatch(setStartDownload(true));
+			} else {
 				await pipe(async function* () {
 					yield encode(1);
 				}, stream);
@@ -44,7 +45,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 	}
 };
 
-const createNode = async () => {
+export const createNode = async () => {
 	const node = await createLibp2p(defaultConfig);
 
 	node.handle([PROTOCOL], handleProtocolStream, {
@@ -60,10 +61,24 @@ const createNode = async () => {
 			console.log(evt.type);
 		},
 	});
+
 	await waitUntilRelayReservation(node);
 
 	console.log(node.getMultiaddrs());
 	return node;
+};
+
+/**
+ *
+ *
+ * @param {import('@libp2p/interface').Libp2p} node
+ * @param {import('@multiformats/multiaddr').Multiaddr} peerMA
+ * @returns {Promise<import('@libp2p/interface').Stream>}
+ */
+export const dialProtocol = async (node, peerMA) => {
+	return await node.dialProtocol(peerMA, [PROTOCOL], {
+		runOnLimitedConnection: true,
+	});
 };
 
 const waitUntilRelayReservation = (
@@ -92,5 +107,3 @@ const waitUntilRelayReservation = (
 		check();
 	});
 };
-
-export { createNode, PROTOCOL, BOOTSTRAP_NODES, WEBRTC_CODE, isWebRTC };

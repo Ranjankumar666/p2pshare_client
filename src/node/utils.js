@@ -1,6 +1,6 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import { decode, encode, END } from '../buffer/codec';
+import { decode, encode, END, START } from '../buffer/codec';
 import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 // const encode = (index, hash, chunk) => {
@@ -66,6 +66,9 @@ const convertStreamToFile = async (stream, received, failed) => {
 				console.log('Received: EOT packet ');
 				await assembleAndDownload(received, encode, stream);
 				return;
+			} else if (type === START) {
+				console.log('File Transfer initiated');
+				return;
 			}
 
 			const computedHash = await hashChunk(chunk);
@@ -90,7 +93,6 @@ const convertStreamToFile = async (stream, received, failed) => {
 };
 
 const assembleAndDownload = async (received, encode, stream) => {
-	console.log('File Download initiated');
 	const worker = new FileAssemblyWorker();
 
 	const blobs = await new Promise((res) => {
@@ -102,7 +104,6 @@ const assembleAndDownload = async (received, encode, stream) => {
 		worker.onmessage = (ev) => res(ev.data);
 	});
 
-	console.log(blobs);
 	// await Promise.all(blobs.map((blob) => handleFileDownload(blob)));
 	for (let blob of blobs) {
 		await handleFileDownload(blob);
@@ -111,33 +112,6 @@ const assembleAndDownload = async (received, encode, stream) => {
 	await pipe(async function* () {
 		yield encode(1);
 	}, stream);
-};
-
-const assembleZipChunks = (map) => {
-	// 1️⃣ Sort chunks by index
-	const sortedIndices = Array.from(map.keys()).sort((a, b) => a - b);
-
-	// 2️⃣ Merge all chunks into a single Uint8Array
-	let totalSize = sortedIndices.reduce(
-		(acc, i) => acc + map.get(i).length,
-		0
-	);
-	let mergedArray = new Uint8Array(totalSize);
-	let offset = 0;
-
-	for (let index of sortedIndices) {
-		const chunk = map.get(index);
-		mergedArray.set(chunk, offset);
-		offset += chunk.length;
-	}
-
-	if (mergedArray.length === totalSize) {
-		console.log('All files combined');
-	}
-	// 3️⃣ Create a ZIP Blob
-	return new Blob([mergedArray], {
-		type: 'application/zip',
-	});
 };
 
 const handleFileDownload = async (fileBlob) => {
@@ -187,5 +161,4 @@ export {
 	convertStreamToFile,
 	handleFileDownload,
 	chunkify,
-	assembleZipChunks,
 };

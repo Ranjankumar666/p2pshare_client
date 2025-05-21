@@ -7,7 +7,8 @@
 						"chunkPacket",
 						"ackPacket",
 						"retryPacket",
-						"endOfTransferPacket"
+						"endOfTransferPacket",
+						"startOfTransferPacket"
 					]
 				}
 			},
@@ -31,6 +32,10 @@
 				"endOfTransferPacket": {
 					"type": "EndOfTransferPacket",
 					"id": 5
+				},
+				"startOfTransferPacket": {
+					"type": "StartOfTransferPacket",
+					"id": 6
 				}
 			}
 		},
@@ -67,6 +72,9 @@
 			}
 		},
 		"EndOfTransferPacket": {
+			"fields": {}
+		},
+		"StartOfTransferPacket": {
 			"fields": {}
 		}
 	}

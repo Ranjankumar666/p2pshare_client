@@ -5,16 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { Provider } from './components/ui/provider';
 import { Provider as StateProvider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import stateReducer from './state/stateReducer';
-
-const store = configureStore({
-	reducer: stateReducer,
-	middleware: (defaultMiddleware) =>
-		defaultMiddleware({
-			serializableCheck: false,
-		}),
-});
+import { store } from './state/store';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

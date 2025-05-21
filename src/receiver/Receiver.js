@@ -7,6 +7,8 @@ import {
 	Group,
 	Stack,
 	Spinner,
+	ProgressCircle,
+	Text,
 } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 
@@ -16,6 +18,8 @@ import { useSelector } from 'react-redux';
  */
 const Receiver = () => {
 	const node = useSelector((state) => state.node);
+	const startedDownload = useSelector((state) => state.startedDownload);
+
 	const [addresses, setAddresses] = useState();
 
 	useEffect(() => {
@@ -61,6 +65,17 @@ const Receiver = () => {
 				</Group>
 			)}
 			{/* </Grid> */}
+			{startedDownload && (
+				<>
+					<ProgressCircle.Root value={null} size="xs">
+						<ProgressCircle.Circle>
+							<ProgressCircle.Track />
+							<ProgressCircle.Range strokeLinecap="round" />
+						</ProgressCircle.Circle>
+					</ProgressCircle.Root>
+					<Text size="md">Downloading</Text>
+				</>
+			)}
 		</Stack>
 	);
 
