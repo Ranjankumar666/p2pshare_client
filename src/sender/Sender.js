@@ -214,9 +214,6 @@ const Sender = () => {
 		try {
 			const peerMA = multiaddr(`${MULTIADDR_SUFFIX}${peerAdd}`);
 
-			const rtt = await node.services.ping.ping(peerMA);
-			console.log('RTT for the receiver: ' + rtt);
-
 			if (fileNameKey) {
 				await sendOneFile(fileNameKey, files, peerMA);
 			}
@@ -292,6 +289,12 @@ const Sender = () => {
 				<Button
 					size="xs"
 					onClick={async () => {
+						const peerMA = multiaddr(
+							`${MULTIADDR_SUFFIX}${peerAdd}`
+						);
+						const rtt = await node.services.ping.ping(peerMA);
+						console.log('RTT for the receiver: ' + rtt);
+
 						const promiseArray = Object.keys(files).map((file) =>
 							send(file)
 						);
@@ -300,9 +303,6 @@ const Sender = () => {
 						// 	async (file) => await send(file)
 						// );
 						await Promise.all(promiseArray);
-						const peerMA = multiaddr(
-							`${MULTIADDR_SUFFIX}${peerAdd}`
-						);
 						const stream = await node.dialProtocol(peerMA, [
 							PROTOCOL,
 						]);
