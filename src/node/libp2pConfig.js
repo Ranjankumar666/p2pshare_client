@@ -9,6 +9,7 @@ import { autoNAT } from '@libp2p/autonat';
 import * as filters from '@libp2p/websockets/filters';
 
 import { BOOTSTRAP_NODES } from './constants';
+import { ping } from '@libp2p/ping';
 
 /** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
@@ -48,6 +49,7 @@ const defaultConfig = {
 		}),
 	],
 	services: {
+		ping: ping(),
 		identify: identify(),
 		autoNAT: autoNAT(),
 	},

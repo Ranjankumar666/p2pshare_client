@@ -213,6 +213,10 @@ const Sender = () => {
 
 		try {
 			const peerMA = multiaddr(`${MULTIADDR_SUFFIX}${peerAdd}`);
+
+			const rtt = await node.services.ping.ping(peerMA);
+			console.log('RTT for the receiver: ' + rtt);
+
 			if (fileNameKey) {
 				await sendOneFile(fileNameKey, files, peerMA);
 			}
