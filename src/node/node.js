@@ -50,12 +50,16 @@ const createNode = async () => {
 	node.handle([PROTOCOL], handleProtocolStream, {
 		force: true,
 		runOnLimitedConnection: true,
-		maxInboundStreams: 100,
-		maxOutboundStreams: 100,
+		maxInboundStreams: 10000,
+		maxOutboundStreams: 10000,
 	});
 
 	await node.start();
-	await node.dial(multiaddr(REMOTE_RELAY_NODE));
+	await node.dial(multiaddr(REMOTE_RELAY_NODE[0]), {
+		onProgress: (evt) => {
+			console.log(evt.type);
+		},
+	});
 	await waitUntilRelayReservation(node);
 
 	console.log(node.getMultiaddrs());

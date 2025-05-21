@@ -37,7 +37,6 @@ function App() {
 		(async () => {
 			try {
 				node = await createNode();
-				await node.dial(multiaddr(REMOTE_RELAY_NODE));
 				console.log('Registered to Relay');
 				dispatch(setNode(node));
 			} catch (err) {
