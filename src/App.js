@@ -18,8 +18,6 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { delError, setErr, setNode } from './state/stateReducer';
 import { MdClose, MdDownload, MdShare } from 'react-icons/md';
-import { multiaddr } from '@multiformats/multiaddr';
-import { REMOTE_RELAY_NODE } from './node/constants';
 
 function App() {
 	const dispatch = useDispatch();
@@ -40,6 +38,7 @@ function App() {
 				console.log('Registered to Relay');
 				dispatch(setNode(node));
 			} catch (err) {
+				console.error(err);
 				dispatch(setErr(err.message));
 			}
 		})();
