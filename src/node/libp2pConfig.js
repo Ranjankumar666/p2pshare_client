@@ -17,7 +17,9 @@ const defaultConfig = {
 		listen: ['/webrtc', '/p2p-circuit'],
 	},
 	transports: [
-		circuitRelayTransport({}),
+		circuitRelayTransport({
+			stopTimeout: 120 * 1000,
+		}),
 		// tcp(),
 		webSockets({
 			filter: filters.all,
@@ -69,7 +71,7 @@ const defaultConfig = {
 	},
 	connectionManager: {
 		maxConnections: 10000000,
-		dialTimeout: 60 * 1000,
+		dialTimeout: 120 * 1000,
 		maxPeerAddrsToDial: 10000000,
 		maxIncomingPendingConnections: 1000000,
 		maxParallelDials: 10000000,
