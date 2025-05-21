@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { multiaddr } from '@multiformats/multiaddr';
 import { pipe } from 'it-pipe';
 import { encode, decode, END, CHUNK } from '../buffer/codec';
-import { RETRY_THRESHOLD, MULTIADDR_SUFFIX } from '../node/constants';
+import {
+	RETRY_THRESHOLD,
+	PROTOCOL,
+	getRelayedMultiAddr,
+} from '../node/constants';
 import {
 	Input,
 	Button,
@@ -27,8 +30,6 @@ import {
 } from 'react-icons/md';
 import { loadWasm } from '../wasm/loadWasm';
 import FileCompressionWorker from '../workers/fileCompression.worker.js';
-
-const PROTOCOL = '/lftp/1.0';
 
 /**
  * @type {import('react').FC<{
@@ -130,7 +131,6 @@ const Sender = () => {
 				res(ev.data);
 			};
 		});
-		console.log(chunks.length);
 
 		let sentBytes = 0;
 
@@ -212,7 +212,7 @@ const Sender = () => {
 		});
 
 		try {
-			const peerMA = multiaddr(`${MULTIADDR_SUFFIX}${peerAdd}`);
+			const peerMA = getRelayedMultiAddr(peerAdd);
 
 			if (fileNameKey) {
 				await sendOneFile(fileNameKey, files, peerMA);
@@ -289,9 +289,7 @@ const Sender = () => {
 				<Button
 					size="xs"
 					onClick={async () => {
-						const peerMA = multiaddr(
-							`${MULTIADDR_SUFFIX}${peerAdd}`
-						);
+						const peerMA = getRelayedMultiAddr(peerAdd);
 						const rtt = await node.services.ping.ping(peerMA);
 						console.log('RTT for the receiver: ' + rtt);
 
