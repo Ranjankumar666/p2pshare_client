@@ -10,6 +10,7 @@
 		"@libp2p/autonat": "^2.0.23",
 		"@libp2p/bootstrap": "^11.0.26",
 		"@libp2p/circuit-relay-v2": "^3.2.1",
+		"@libp2p/dcutr": "^2.0.31",
 		"@libp2p/identify": "^3.0.21",
 		"@libp2p/ping": "^2.0.31",
 		"@libp2p/webrtc": "^5.2.1",

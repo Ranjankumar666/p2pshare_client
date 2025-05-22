@@ -10,6 +10,7 @@ import * as filters from '@libp2p/websockets/filters';
 import { ping } from '@libp2p/ping';
 
 import { BOOTSTRAP_NODES } from './constants';
+import { dcutr } from '@libp2p/dcutr';
 
 /** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
@@ -120,6 +121,7 @@ const defaultConfig = {
 			protocolPrefix: 'ipfs',
 			timeout: 30000,
 		}),
+		dcutr: dcutr(),
 	},
 	peerDiscovery: [
 		bootstrap({
