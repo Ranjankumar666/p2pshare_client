@@ -39,6 +39,7 @@ const Sender = () => {
 	const [error, setError] = useState({});
 	const [progress, setProgress] = useState({});
 	const [sending, setSending] = useState({});
+	const [connecting, setConnecting] = useState(false);
 
 	/** @type {import('@libp2p/interface').Libp2p} */
 	const node = useSelector((state) => state.node);
@@ -98,6 +99,38 @@ const Sender = () => {
 		setError(del);
 
 		setSending(del);
+	};
+
+	const resetProgressAndSending = (fileNameKey = null) => {
+		if (fileNameKey) {
+			setSending((oldState) => {
+				const newState = { ...oldState };
+				newState[fileNameKey] = false;
+				return newState;
+			});
+			setProgress((oldState) => {
+				const newState = { ...oldState };
+				newState[fileNameKey] = 0;
+
+				return newState;
+			});
+		} else {
+			setSending((oldState) => {
+				const newState = { ...oldState };
+
+				for (let fileName in newState) {
+					newState[fileName] = false;
+				}
+				return newState;
+			});
+			setProgress((oldState) => {
+				const newState = { ...oldState };
+				for (let fileName in newState) {
+					newState[fileName] = 0;
+				}
+				return newState;
+			});
+		}
 	};
 
 	const sendOneFile = async (fileName, bytefiles, peerMA) => {
@@ -233,17 +266,56 @@ const Sender = () => {
 			console.error('Error' + error);
 			setGenError(error.message);
 		} finally {
-			setSending((oldState) => {
-				const newState = { ...oldState };
-				newState[fileNameKey] = false;
-				return newState;
-			});
-			setProgress((oldState) => {
-				const newState = { ...oldState };
-				newState[fileNameKey] = 0;
+			resetProgressAndSending(fileNameKey);
+		}
+	};
 
-				return newState;
+	const sendAll = async () => {
+		try {
+			setConnecting(true);
+			const peerMA = getRelayedMultiAddr(peerAdd);
+			// Start
+			let stream = await dialProtocol(node, peerMA);
+			await pipe(async function* () {
+				yield encode(START);
+			}, stream);
+			setConnecting(false);
+
+			Object.keys(files).forEach((fileNameKey) =>
+				setSending((oldState) => {
+					const newState = { ...oldState };
+					newState[fileNameKey] = true;
+					return newState;
+				})
+			);
+
+			// Send packets
+			const promiseArray = Object.keys(files).map((file) => send(file));
+			await Promise.all(promiseArray);
+
+			// End
+			stream = await dialProtocol(node, peerMA);
+
+			await pipe(async function* () {
+				yield encode(END);
+			}, stream);
+
+			await pipe(stream, async function (source) {
+				for await (const rawChunk of source) {
+					const decodedChunk = decode(rawChunk.bufs[0]);
+
+					if (decodedChunk.type === 1) {
+						console.log(`✅ Transferred successfully`);
+						return;
+					}
+				}
 			});
+
+			await stream.close();
+		} catch (err) {
+			console.error('Error' + error);
+			setGenError(error.message);
+			resetProgressAndSending();
 		}
 	};
 
@@ -290,49 +362,7 @@ const Sender = () => {
 
 				<Button
 					size="xs"
-					onClick={async () => {
-						Object.keys(files).forEach((fileNameKey) =>
-							setSending((oldState) => {
-								const newState = { ...oldState };
-								newState[fileNameKey] = true;
-								return newState;
-							})
-						);
-
-						const peerMA = getRelayedMultiAddr(peerAdd);
-						// Start
-						let stream = await dialProtocol(node, peerMA);
-						await pipe(async function* () {
-							yield encode(START);
-						}, stream);
-
-						// Send packets
-						const promiseArray = Object.keys(files).map((file) =>
-							send(file)
-						);
-
-						await Promise.all(promiseArray);
-
-						// End
-						stream = await dialProtocol(node, peerMA);
-
-						await pipe(async function* () {
-							yield encode(END);
-						}, stream);
-
-						await pipe(stream, async function (source) {
-							for await (const rawChunk of source) {
-								const decodedChunk = decode(rawChunk.bufs[0]);
-
-								if (decodedChunk.type === 1) {
-									console.log(`✅ Transferred successfully`);
-									return;
-								}
-							}
-						});
-
-						await stream.close();
-					}}
+					onClick={sendAll}
 					variant="surface"
 					disabled={
 						!Object.keys(files).length ||
@@ -365,6 +395,7 @@ const Sender = () => {
 					</Button>
 				</Group>
 			)}
+			{connecting && <Text size="sm">Making connection.....</Text>}
 			<SimpleGrid columns={[2, null, 3]} gap="2">
 				{Object.entries(files).map(([key, file], id) => (
 					<Card.Root
