@@ -111,19 +111,19 @@ const assembleAndDownload = async (received, encode, stream) => {
 	// for (let blob of blobs) {
 	// 	await handleFileDownload(blob);
 	// }
-
-	for (let file of files) {
-		handleFileDownload(file);
-	}
+	if (files)
+		for (let file of files) {
+			handleFileDownload(file);
+		}
 
 	await pipe(async function* () {
 		yield encode(ACK);
 	}, stream);
 };
 
-const handleFileDownload = async (filesDownload) => {
+const handleFileDownload = (filesDownload) => {
 	console.log(filesDownload);
-	filesDownload.forEach((val, fileName) => {
+	filesDownload?.forEach((val, fileName) => {
 		const blob = new Blob([val]);
 		const url = URL.createObjectURL(blob);
 		const anchor = document.createElement('a');

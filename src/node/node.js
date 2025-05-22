@@ -42,6 +42,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 		}
 	} catch (error) {
 		console.error('Error handling protocol stream:', error);
+		store.dispatch(setStartDownload(false));
 		// Retry logic or error handling can be added here
 		await stream.close();
 		await connection.close();
@@ -85,6 +86,8 @@ export const createNode = async () => {
 export const dialProtocol = async (node, peerMA) => {
 	return await node.dialProtocol(peerMA, [PROTOCOL], {
 		runOnLimitedConnection: true,
+		maxOutboundStreams: 10000,
+		negotiateFully: true,
 	});
 };
 
