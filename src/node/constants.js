@@ -11,6 +11,7 @@ export const BOOTSTRAP_NODES = REMOTE_RELAY_NODE;
 // export const MULTIADDR_SUFFIX = `${REMOTE_RELAY_NODE[0]}/p2p-circuit/webrtc/p2p/`;
 export const RETRY_THRESHOLD = 3;
 export const CHUNK_SIZE = 221 * 1024;
+export const SIGNAL_TIMEOUT = 20000;
 
 export const getRelayedMultiAddr = (peerAdd) => {
 	return REMOTE_RELAY_NODE.map((add) =>

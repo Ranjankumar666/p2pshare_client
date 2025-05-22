@@ -2,7 +2,12 @@ import { createLibp2p } from 'libp2p';
 import { defaultConfig } from './libp2pConfig';
 import { pipe } from 'it-pipe';
 
-import { PROTOCOL, WEBRTC_CODE, REMOTE_RELAY_NODE_MULTIADD } from './constants';
+import {
+	PROTOCOL,
+	WEBRTC_CODE,
+	REMOTE_RELAY_NODE_MULTIADD,
+	SIGNAL_TIMEOUT,
+} from './constants';
 import { convertStreamToFile } from './utils';
 
 import { encode, END, START } from '../buffer/codec';
@@ -93,6 +98,7 @@ export const dialProtocol = async (node, peerMA) => {
 		runOnLimitedConnection: true,
 		maxOutboundStreams: 10000,
 		negotiateFully: true,
+		signal: AbortSignal.timeout(SIGNAL_TIMEOUT),
 	});
 };
 
