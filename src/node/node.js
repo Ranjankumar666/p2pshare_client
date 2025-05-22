@@ -61,20 +61,25 @@ export const createNode = async () => {
 	node.handle([PROTOCOL], handleProtocolStream, {
 		force: true,
 		runOnLimitedConnection: true,
-		maxInboundStreams: 10000,
-		maxOutboundStreams: 10000,
+		maxInboundStreams: 5096,
+		maxOutboundStreams: 5096,
 	});
 
 	await node.start();
 	console.log(REMOTE_RELAY_NODE_MULTIADD);
 
-	for (let multiAddr of REMOTE_RELAY_NODE_MULTIADD) {
-		await node.dial(multiAddr, {
-			onProgress: (evt) => {
-				console.log(evt.type);
-			},
-		});
-	}
+	// for (let multiAddr of REMOTE_RELAY_NODE_MULTIADD) {
+	// 	await node.dial(multiAddr, {
+	// 		onProgress: (evt) => {
+	// 			console.log(evt.type);
+	// 		},
+	// 	});
+	// }
+
+	await node.dial(REMOTE_RELAY_NODE_MULTIADD, {
+		signal: AbortSignal.timeout(SIGNAL_TIMEOUT),
+		force: true,
+	});
 
 	await waitUntilRelayReservation(node);
 
