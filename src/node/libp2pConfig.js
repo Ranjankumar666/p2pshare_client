@@ -7,9 +7,9 @@ import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
 import { bootstrap } from '@libp2p/bootstrap';
 import { autoNAT } from '@libp2p/autonat';
 import * as filters from '@libp2p/websockets/filters';
+import { ping } from '@libp2p/ping';
 
 import { BOOTSTRAP_NODES } from './constants';
-import { ping } from '@libp2p/ping';
 
 /** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
@@ -18,9 +18,9 @@ const defaultConfig = {
 	},
 	transports: [
 		circuitRelayTransport({
-			stopTimeout: 120 * 1000,
+			stopTimeout: 60 * 1000, // Reduced from 120s
+			reservationTtl: 2 * 60 * 1000, // 2 minutes
 		}),
-		// tcp(),
 		webSockets({
 			filter: filters.all,
 		}),
@@ -29,41 +29,59 @@ const defaultConfig = {
 				iceServers: [
 					{ urls: 'stun:stun.l.google.com:19302' },
 					{ urls: 'stun:stun1.l.google.com:19302' },
+					{ urls: 'stun:stun2.l.google.com:19302' }, // Add more STUN servers
 				],
+				iceCandidatePoolSize: 10,
 			},
 			dataChannel: {
-				maxMessageSize: 256 * 1024,
-				maxBufferedAmount: 32 * 1024 * 1024,
-				closeTimeout: 600 * 1000,
-				openTimeout: 600 * 1000,
-				bufferedAmountLowEventTimeout: 60 * 1000,
+				maxMessageSize: 256 * 1024, // 256KB
+				maxBufferedAmount: 16 * 1024 * 1024, // 16MB
+				closeTimeout: 30 * 1000, // 30s
+				openTimeout: 30 * 1000, // 30s
+				bufferedAmountLowEventTimeout: 30 * 1000,
 			},
-			inboundConnectionTimeout: 240 * 1000,
+			inboundConnectionTimeout: 60 * 1000, // 60s
 		}),
 	],
 	connectionEncrypters: [noise()],
 	streamMuxers: [
 		yamux({
-			maxInboundStreams: 10000000,
-			maxOutboundStreams: 10000000,
-			maxMessageSize: 1024 * 1024 * 1024 * 16,
+			maxInboundStreams: 1000,
+			maxOutboundStreams: 1000,
+			maxMessageSize: 256 * 1024 * 1024, // 256MB
 			enableKeepAlive: true,
-
-			// maxStreamWindowSize
+			keepAliveInterval: 30000, // 30s keepalive
 		}),
 	],
 	services: {
-		ping: ping(),
-		identify: identify(),
-		autoNAT: autoNAT(),
+		ping: ping({
+			protocolPrefix: 'ipfs',
+			maxInboundStreams: 10,
+			maxOutboundStreams: 10,
+			timeout: 10000,
+		}),
+		identify: identify({
+			protocolPrefix: 'ipfs',
+			timeout: 30000,
+			maxInboundStreams: 10,
+			maxOutboundStreams: 10,
+		}),
+		autoNAT: autoNAT({
+			protocolPrefix: 'ipfs',
+			timeout: 30000,
+		}),
 	},
 	peerDiscovery: [
 		bootstrap({
 			list: BOOTSTRAP_NODES,
+			timeout: 30000,
+			tagName: 'bootstrap',
+			tagValue: 50,
+			tagTTL: 120000,
 		}),
 	],
 	connectionGater: {
-		denyDialMultiaddr: () => false, // Relax security for testing
+		denyDialMultiaddr: () => false,
 		denyInboundConnection: () => false,
 		denyDialPeer: () => false,
 		denyOutboundConnection: () => false,
@@ -72,14 +90,17 @@ const defaultConfig = {
 		denyInboundUpgradedConnection: () => false,
 	},
 	connectionManager: {
-		maxConnections: 10000000,
-		dialTimeout: 120 * 1000,
-		maxPeerAddrsToDial: 10000000,
-		maxIncomingPendingConnections: 1000000,
-		maxParallelDials: 10000000,
-		inboundStreamProtocolNegotiationTimeout: 120 * 1000,
-		inboundConnectionThreshold: 10000,
-		outboundStreamProtocolNegotiationTimeout: 120 * 1000,
+		maxConnections: 100,
+		minConnections: 5,
+		dialTimeout: 30 * 1000,
+		maxPeerAddrsToDial: 25,
+		maxIncomingPendingConnections: 50,
+		maxParallelDials: 10,
+		inboundStreamProtocolNegotiationTimeout: 30 * 1000,
+		outboundStreamProtocolNegotiationTimeout: 30 * 1000,
+		inboundConnectionThreshold: 5,
+		autoDialInterval: 10000,
+		autoDialMaxQueueLength: 100,
 	},
 };
 

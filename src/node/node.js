@@ -8,6 +8,7 @@ import { convertStreamToFile } from './utils';
 import { encode, END, START } from '../buffer/codec';
 import { store } from '../state/store';
 import { setStartDownload } from '../state/stateReducer';
+import { debugWebRTCConnections, setupConnectionDebugging } from './debug';
 
 export const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
 const received = new Map();
@@ -71,6 +72,10 @@ export const createNode = async () => {
 	}
 
 	await waitUntilRelayReservation(node);
+
+	setupConnectionDebugging(node);
+	setupConnectionDebugging(node);
+	debugWebRTCConnections(node);
 
 	console.log(node.getMultiaddrs());
 	return node;

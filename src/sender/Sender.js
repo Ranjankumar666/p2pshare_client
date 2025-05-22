@@ -27,7 +27,7 @@ import {
 import FileCompressionWorker from '../workers/fileCompression.worker.js';
 import { dialProtocol } from '../node/node.js';
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 50;
 
 /**
  * @type {import('react').FC<{
