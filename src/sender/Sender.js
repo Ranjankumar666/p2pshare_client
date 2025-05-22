@@ -213,12 +213,6 @@ const Sender = () => {
 	};
 
 	const send = async (fileNameKey) => {
-		setSending((oldState) => {
-			const newState = { ...oldState };
-			newState[fileNameKey] = true;
-			return newState;
-		});
-
 		try {
 			const peerMA = getRelayedMultiAddr(peerAdd);
 
@@ -297,6 +291,14 @@ const Sender = () => {
 				<Button
 					size="xs"
 					onClick={async () => {
+						Object.keys(files).forEach((fileNameKey) =>
+							setSending((oldState) => {
+								const newState = { ...oldState };
+								newState[fileNameKey] = true;
+								return newState;
+							})
+						);
+
 						const peerMA = getRelayedMultiAddr(peerAdd);
 						// Start
 						let stream = await dialProtocol(node, peerMA);
