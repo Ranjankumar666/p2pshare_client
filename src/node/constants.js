@@ -4,10 +4,16 @@ export const PROTOCOL = '/lftp/1.0';
 export const WEBRTC_CODE = protocols('webrtc').code;
 export const REMOTE_RELAY_NODE =
 	process.env.REACT_APP_RELAY_NODE_ADDRESS.split(',');
+export const REMOTE_RELAY_NODE_MULTIADD = REMOTE_RELAY_NODE.map((add) =>
+	multiaddr(add)
+);
 export const BOOTSTRAP_NODES = REMOTE_RELAY_NODE;
-export const MULTIADDR_SUFFIX = `${REMOTE_RELAY_NODE[0]}/p2p-circuit/webrtc/p2p/`;
+// export const MULTIADDR_SUFFIX = `${REMOTE_RELAY_NODE[0]}/p2p-circuit/webrtc/p2p/`;
 export const RETRY_THRESHOLD = 3;
 export const CHUNK_SIZE = 221 * 1024;
 
-export const getRelayedMultiAddr = (peerAdd) =>
-	multiaddr(`${MULTIADDR_SUFFIX}${peerAdd}`);
+export const getRelayedMultiAddr = (peerAdd) => {
+	return REMOTE_RELAY_NODE.map((add) =>
+		multiaddr(`${add}/p2p-circuit/webrtc/p2p/${peerAdd}`)
+	);
+};

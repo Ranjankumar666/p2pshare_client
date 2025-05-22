@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
 import { encode, decode, END, CHUNK, START } from '../buffer/codec';
-import { PROTOCOL, getRelayedMultiAddr } from '../node/constants';
+import { getRelayedMultiAddr } from '../node/constants';
 import {
 	Input,
 	Button,
@@ -24,9 +24,10 @@ import {
 	MdSend,
 	MdUpload,
 } from 'react-icons/md';
-import { loadWasm } from '../wasm/loadWasm';
 import FileCompressionWorker from '../workers/fileCompression.worker.js';
 import { dialProtocol } from '../node/node.js';
+
+const BATCH_SIZE = 100;
 
 /**
  * @type {import('react').FC<{
@@ -38,22 +39,11 @@ const Sender = () => {
 	const [error, setError] = useState({});
 	const [progress, setProgress] = useState({});
 	const [sending, setSending] = useState({});
-	const zipFileWasmRef = useRef();
 
 	/** @type {import('@libp2p/interface').Libp2p} */
 	const node = useSelector((state) => state.node);
 	const [genError, setGenError] = useState();
 	const fileUploadRef = useRef();
-
-	useEffect(() => {
-		if (!window.zipFileWASM) {
-			loadWasm().then(() => {
-				zipFileWasmRef.current = window.zipFileWASM;
-			});
-		} else if (!zipFileWasmRef.current) {
-			zipFileWasmRef.current = window.zipFileWASM;
-		}
-	}, []);
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
@@ -131,55 +121,57 @@ const Sender = () => {
 
 		let sentBytes = [0];
 
-		for (let index = 0; index < chunks.length; index += 1) {
+		const transferChunk = async (index, hash, chunk, sentBytes) => {
 			let stream = await dialProtocol(node, peerMA);
 
 			const write = async function* () {
-				// while (stack.length > 0) {
-
-				// const idx = stack.pop();
-				const idx = index;
-				const chunk = chunks[idx];
-				const hash = hashes[idx];
-
-				sentBytes[0] += chunk.length;
-				const donePercent = ((sentBytes[0] / fileSize) * 100).toFixed(
-					1
-				);
-
-				setProgress((oldState) => {
-					const newState = { ...oldState };
-					newState[fileName] = donePercent;
-
-					return newState;
-				});
 				yield encode(CHUNK, {
-					index: idx,
+					index,
 					hash,
 					chunk,
 					filename: fileName,
 				});
-				// }
-				// await new Promise((res) => setTimeout(res, 100));
-				// }
 			};
 
+			const writeAgain = (resendIndex) =>
+				async function* () {
+					yield encode(CHUNK, {
+						resendIndex,
+						hash,
+						chunk,
+						filename: fileName,
+					});
+				};
+
 			const read = async function (source) {
+				let decodedChunk;
 				for await (const rawChunk of source) {
-					const decodedChunk = decode(rawChunk.bufs[0]);
+					decodedChunk = decode(rawChunk.bufs[0]);
 
 					if (decodedChunk.type === 1) {
+						sentBytes[0] += chunk.length;
+						const donePercent = (
+							(sentBytes[0] / fileSize) *
+							100
+						).toFixed(1);
+
+						setProgress((oldState) => {
+							const newState = { ...oldState };
+							newState[fileName] = donePercent;
+
+							return newState;
+						});
 						return;
 					}
 
 					console.log(
-						`🔁 Retry requested for ${fileName}:`,
-						decodedChunk.indices
+						`🔁 Retry requested for ${fileName}:`
+						// decodedChunk.indices
 					);
 				}
 
-				stream = await node.dialProtocol(peerMA, [PROTOCOL]);
-				await pipe(write, stream);
+				stream = await dialProtocol(node, peerMA);
+				await pipe(writeAgain(decodedChunk.indices), stream);
 				await pipe(stream, read);
 			};
 
@@ -187,6 +179,34 @@ const Sender = () => {
 			await pipe(stream, read);
 			await stream.close();
 			// console.log(`✅ Connection closed `);
+		};
+
+		let curr = 0;
+
+		// make batches
+		const BATCHES = [];
+		while (curr < chunks.length) {
+			const currIndex = curr;
+
+			BATCHES.push(
+				chunks
+					.slice(curr, curr + BATCH_SIZE)
+					.map((chunk, index) => [
+						currIndex + index,
+						hashes[currIndex + index],
+						chunk,
+					])
+			);
+
+			curr += BATCH_SIZE;
+		}
+
+		for (let batch of BATCHES) {
+			await Promise.all(
+				batch.map(([index, hash, chunk]) =>
+					transferChunk(index, hash, chunk, sentBytes)
+				)
+			);
 		}
 
 		removeFile(fileName);
@@ -312,7 +332,11 @@ const Sender = () => {
 						await stream.close();
 					}}
 					variant="surface"
-					disabled={!Object.keys(files).length || !peerAdd.length}
+					disabled={
+						!Object.keys(files).length ||
+						!peerAdd.length ||
+						Object.values(sending).some((val) => val === true)
+					}
 				>
 					Send
 					<Icon>

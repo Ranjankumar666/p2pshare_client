@@ -2,6 +2,7 @@
 /* eslint no-restricted-globals: ["off"] */
 /* global Go */
 /* global zipFileWASM */
+/* global unzipFileWASM */
 /// <reference lib="webworker" />
 
 importScripts('/wasm_exec.js');
@@ -26,7 +27,7 @@ function bufferToHex(buffer) {
 		.join('');
 }
 
-const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
+const chunkify = async (fileData, fileSize, chunkSize = 12 * 1024) => {
 	const chunks = [];
 	const hashes = [];
 
@@ -40,6 +41,7 @@ const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
 		offset += chunkSize;
 	}
 
+	console.log('Chunks length: ', chunks.length);
 	return { chunks, hashes };
 };
 
@@ -88,6 +90,15 @@ self.onmessage = async function (event) {
 			blobs.push(blob);
 		});
 
-		self.postMessage(blobs);
+		const files = [];
+		for (let blob of blobs) {
+			const file = unzipFileWASM(
+				new Uint8Array(await blob.arrayBuffer())
+			);
+
+			files.push(file);
+		}
+
+		self.postMessage(files);
 	}
 };

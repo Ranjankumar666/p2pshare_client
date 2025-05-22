@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import Sender from './sender/Sender';
 import Receiver from './receiver/Receiver';
 import { createNode } from './node/node';
-import { loadWasm } from './wasm/loadWasm';
 import {
 	Box,
 	Button,
@@ -24,11 +23,11 @@ function App() {
 	const node = useSelector((state) => state.node);
 	const error = useSelector((state) => state.err);
 
-	useEffect(() => {
-		loadWasm().then(() => {
-			console.log('Loaded WASM binaries');
-		});
-	}, []);
+	// useEffect(() => {
+	// 	loadWasm().then(() => {
+	// 		console.log('Loaded WASM binaries');
+	// 	});
+	// }, []);
 
 	useEffect(() => {
 		let node = null;

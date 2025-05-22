@@ -17,8 +17,6 @@ func processFile(fileManager chan FileProcess, returnChannel chan []byte) {
 	var buf bytes.Buffer
 	zipper := zip.NewWriter(&buf)
 
-	defer zipper.Close()
-
 	for fm := range fileManager {
 		fileBuffer, _ := zipper.Create(fm.fileName)
 		fileBuffer.Write(fm.fileData)

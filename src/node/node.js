@@ -2,11 +2,10 @@ import { createLibp2p } from 'libp2p';
 import { defaultConfig } from './libp2pConfig';
 import { pipe } from 'it-pipe';
 
-import { PROTOCOL, WEBRTC_CODE, REMOTE_RELAY_NODE } from './constants';
+import { PROTOCOL, WEBRTC_CODE, REMOTE_RELAY_NODE_MULTIADD } from './constants';
 import { convertStreamToFile } from './utils';
 
 import { encode, END, START } from '../buffer/codec';
-import { multiaddr } from '@multiformats/multiaddr';
 import { store } from '../state/store';
 import { setStartDownload } from '../state/stateReducer';
 
@@ -20,11 +19,15 @@ const failed = new Set();
  */
 const handleProtocolStream = async ({ connection, stream }) => {
 	try {
-		const type = await convertStreamToFile(stream, received, failed);
-		if (failed.size !== 0) {
+		const [type, indexFailed] = await convertStreamToFile(
+			stream,
+			received,
+			failed
+		);
+		if (indexFailed) {
 			//
 			await pipe(async function* () {
-				yield encode(2, { indices: Array.from(failed) });
+				yield encode(2, { indices: [indexFailed] });
 			}, stream);
 		} else {
 			if (type === END) {
@@ -56,11 +59,15 @@ export const createNode = async () => {
 	});
 
 	await node.start();
-	await node.dial(multiaddr(REMOTE_RELAY_NODE[0]), {
-		onProgress: (evt) => {
-			console.log(evt.type);
-		},
-	});
+	console.log(REMOTE_RELAY_NODE_MULTIADD);
+
+	for (let multiAddr of REMOTE_RELAY_NODE_MULTIADD) {
+		await node.dial(multiAddr, {
+			onProgress: (evt) => {
+				console.log(evt.type);
+			},
+		});
+	}
 
 	await waitUntilRelayReservation(node);
 

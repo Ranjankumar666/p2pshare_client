@@ -1,6 +1,6 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import { decode, encode, END, START } from '../buffer/codec';
+import { ACK, decode, encode, END, START } from '../buffer/codec';
 import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 // const encode = (index, hash, chunk) => {
@@ -50,6 +50,8 @@ import FileAssemblyWorker from '../workers/fileCompression.worker';
 const convertStreamToFile = async (stream, received, failed) => {
 	// let receivedByteSize = 0;
 	let streamtype;
+	let indexFailed;
+
 	await pipe(stream, async function process(source) {
 		for await (const rawChunk of source) {
 			if (!(rawChunk.bufs[0] instanceof Uint8Array)) {
@@ -73,7 +75,8 @@ const convertStreamToFile = async (stream, received, failed) => {
 
 			const computedHash = await hashChunk(chunk);
 			if (hash !== computedHash) {
-				failed.add(index);
+				// failed.add(index);
+				indexFailed = index;
 			} else {
 				if (failed.has(index)) {
 					failed.delete(index);
@@ -89,13 +92,13 @@ const convertStreamToFile = async (stream, received, failed) => {
 		}
 	});
 
-	return streamtype;
+	return [streamtype, indexFailed];
 };
 
 const assembleAndDownload = async (received, encode, stream) => {
 	const worker = new FileAssemblyWorker();
 
-	const blobs = await new Promise((res) => {
+	const files = await new Promise((res) => {
 		worker.postMessage({
 			type: 'assemble',
 			data: received,
@@ -105,22 +108,20 @@ const assembleAndDownload = async (received, encode, stream) => {
 	});
 
 	// await Promise.all(blobs.map((blob) => handleFileDownload(blob)));
-	for (let blob of blobs) {
-		await handleFileDownload(blob);
+	// for (let blob of blobs) {
+	// 	await handleFileDownload(blob);
+	// }
+
+	for (let file of files) {
+		handleFileDownload(file);
 	}
 
 	await pipe(async function* () {
-		yield encode(1);
+		yield encode(ACK);
 	}, stream);
 };
 
-const handleFileDownload = async (fileBlob) => {
-	// const url = URL.createObjectURL(blob);
-
-	const filesDownload = window.unzipFileWASM(
-		new Uint8Array(await fileBlob.arrayBuffer())
-	);
-
+const handleFileDownload = async (filesDownload) => {
 	console.log(filesDownload);
 	filesDownload.forEach((val, fileName) => {
 		const blob = new Blob([val]);
