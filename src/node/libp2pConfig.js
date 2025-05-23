@@ -1,4 +1,4 @@
-import { webRTC } from '@libp2p/webrtc';
+import { webRTC, webRTCDirect } from '@libp2p/webrtc';
 import { noise } from '@chainsafe/libp2p-noise';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { identify } from '@libp2p/identify';
@@ -15,7 +15,8 @@ import { dcutr } from '@libp2p/dcutr';
 /** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
 	addresses: {
-		listen: ['/webrtc', '/p2p-circuit'],
+		listen: ['/ws', '/webrtc', '/p2p-circuit'],
+		// announce: ['/webrtc-direct'],
 	},
 	transports: [
 		circuitRelayTransport({

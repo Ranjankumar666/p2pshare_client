@@ -276,6 +276,7 @@ const Sender = () => {
 			// console.log('Handshake in: ', rtt);
 
 			let stream = await dialProtocol(node, peerMA);
+			console.log(stream);
 			await pipe(async function* () {
 				yield encode(START);
 			}, stream);
