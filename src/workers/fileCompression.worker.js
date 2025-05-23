@@ -8,6 +8,8 @@
 importScripts('/wasm_exec.js');
 
 const go = new Go();
+const BATCH_SIZE = 60;
+const CHUNK_SIZE = 12 * 1024;
 
 let goReady = WebAssembly.instantiateStreaming(
 	fetch('/main.wasm'),
@@ -27,7 +29,7 @@ function bufferToHex(buffer) {
 		.join('');
 }
 
-const chunkify = async (fileData, fileSize, chunkSize = 12 * 1024) => {
+const chunkify = async (fileData, fileSize, chunkSize = CHUNK_SIZE) => {
 	const chunks = [];
 	const hashes = [];
 
@@ -72,6 +74,26 @@ const assembleZipChunks = (map) => {
 	});
 };
 
+const batchify = (chunks, hashes, batchSize = BATCH_SIZE) => {
+	let curr = 0;
+	let BATCHES = [];
+	while (curr < chunks.length) {
+		const currIndex = curr;
+		BATCHES.push(
+			chunks
+				.slice(curr, curr + BATCH_SIZE)
+				.map((chunk, index) => [
+					currIndex + index,
+					hashes[currIndex + index],
+					chunk,
+				])
+		);
+		curr += BATCH_SIZE;
+	}
+
+	return BATCHES;
+};
+
 /* eslint-env worker */
 self.onmessage = async function (event) {
 	await goReady;
@@ -79,8 +101,13 @@ self.onmessage = async function (event) {
 
 	if (type === 'zip') {
 		const compressed = zipFileWASM(data);
-		const res = await chunkify(compressed, compressed.byteLength);
-		self.postMessage({ ...res, fileSize: compressed.byteLength });
+		const { chunks, hashes } = await chunkify(
+			compressed,
+			compressed.byteLength
+		);
+
+		const batches = batchify(chunks, hashes);
+		self.postMessage({ batches, fileSize: compressed.byteLength });
 	} else if (type === 'assemble') {
 		const blobs = [];
 		const { bytes, peerId } = data;

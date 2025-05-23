@@ -115,6 +115,8 @@ const assembleAndDownload = async (peerId, received, encode, stream) => {
 		worker.onmessage = (ev) => res(ev.data);
 	});
 
+	worker.terminate();
+
 	// await Promise.all(blobs.map((blob) => handleFileDownload(blob)));
 	// for (let blob of blobs) {
 	// 	await handleFileDownload(blob);

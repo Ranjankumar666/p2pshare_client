@@ -27,8 +27,6 @@ import {
 import FileCompressionWorker from '../workers/fileCompression.worker.js';
 import { dialProtocol } from '../node/node.js';
 
-const BATCH_SIZE = 50;
-
 /**
  * @type {import('react').FC<{
  *   node: import('@libp2p/interface').Libp2p;}> Sender
@@ -139,16 +137,18 @@ const Sender = () => {
 	};
 
 	const sendOneFile = async (conn, fileName, bytefiles, peerMA) => {
-		const singleFile = {};
-		const arrayBuf = await bytefiles[fileName].arrayBuffer();
+		let singleFile = {};
+		let arrayBuf = await bytefiles[fileName].arrayBuffer();
 		singleFile[fileName] = new Uint8Array(arrayBuf);
 
 		const worker = new FileCompressionWorker();
 
-		const { chunks, hashes, fileSize } = await new Promise((res) => {
+		let { batches, fileSize } = await new Promise((res) => {
 			worker.postMessage({ type: 'zip', data: singleFile });
 			worker.onmessage = (ev) => res(ev.data);
 		});
+
+		worker.terminate();
 
 		let sentBytes = [0];
 
@@ -170,7 +170,7 @@ const Sender = () => {
 				const writeAgain = (resendIndex) =>
 					async function* () {
 						yield encode(CHUNK, {
-							resendIndex,
+							index: resendIndex,
 							hash,
 							chunk,
 							filename: fileName,
@@ -208,28 +208,14 @@ const Sender = () => {
 				handleError(err, `transferChunk [${fileName}]`);
 				throw err;
 			} finally {
+				chunk = null;
+				hash = null;
 				if (stream?.close) await stream.close();
 			}
 		};
 
-		let curr = 0;
-		const BATCHES = [];
-		while (curr < chunks.length) {
-			const currIndex = curr;
-			BATCHES.push(
-				chunks
-					.slice(curr, curr + BATCH_SIZE)
-					.map((chunk, index) => [
-						currIndex + index,
-						hashes[currIndex + index],
-						chunk,
-					])
-			);
-			curr += BATCH_SIZE;
-		}
-
 		try {
-			for (let batch of BATCHES) {
+			for (let batch of batches) {
 				await Promise.all(
 					batch.map(([index, hash, chunk]) =>
 						transferChunk(index, hash, chunk, sentBytes)
@@ -238,11 +224,16 @@ const Sender = () => {
 
 				batch = null;
 			}
+			batches = null;
 		} catch (error) {
 			handleError(error, `sendOneFile [${fileName}]`);
 			setConnecting(false);
 			resetProgressAndSending(fileName);
 			return;
+		} finally {
+			arrayBuf = null;
+			delete singleFile[fileName];
+			singleFile = null;
 		}
 
 		removeFile(fileName);
@@ -255,6 +246,7 @@ const Sender = () => {
 				await sendOneFile(conn, fileNameKey, files, peerMA);
 			}
 		} catch (error) {
+			conn.close();
 			setConnecting(false);
 			handleError(error, `send [${fileNameKey}]`);
 			setError((prev) => ({
@@ -430,8 +422,15 @@ const Sender = () => {
 									<Text size="md">
 										{`${progress[file.name]}`.length ===
 											1 && progress[file.name] !== 0
-											? '0' + progress[file.name]
-											: progress[file.name]}{' '}
+											? Math.round(
+													parseInt(
+														'0' +
+															progress[file.name]
+													)
+											  )
+											: parseInt(
+													'0' + progress[file.name]
+											  )}{' '}
 										%
 									</Text>
 								</>
