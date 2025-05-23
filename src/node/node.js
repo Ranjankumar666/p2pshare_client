@@ -18,6 +18,7 @@ import { debugWebRTCConnections, setupConnectionDebugging } from './debug';
 export const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
 const received = new Map();
 const failed = new Set();
+
 /**
  *
  *
@@ -60,7 +61,6 @@ const handleProtocolStream = async ({ connection, stream }) => {
 
 export const createNode = async () => {
 	const node = await createLibp2p(defaultConfig);
-
 	node.handle([PROTOCOL], handleProtocolStream, {
 		force: true,
 		runOnLimitedConnection: true,
@@ -99,12 +99,12 @@ export const createNode = async () => {
 /**
  *
  *
- * @param {import('@libp2p/interface').Libp2p} node
+ * @param {import('@libp2p/interface').Connection} conn
  * @param {import('@multiformats/multiaddr').Multiaddr} peerMA
  * @returns {Promise<import('@libp2p/interface').Stream>}
  */
-export const dialProtocol = async (node, peerMA) => {
-	return await node.dialProtocol(peerMA, [PROTOCOL], {
+export const dialProtocol = async (conn, peerMA) => {
+	return await conn.newStream([PROTOCOL], {
 		runOnLimitedConnection: true,
 		maxOutboundStreams: 10000,
 		negotiateFully: true,

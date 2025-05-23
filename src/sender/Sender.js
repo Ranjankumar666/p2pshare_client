@@ -138,7 +138,7 @@ const Sender = () => {
 		if (err?.message) setGenError(err.message);
 	};
 
-	const sendOneFile = async (fileName, bytefiles, peerMA) => {
+	const sendOneFile = async (conn, fileName, bytefiles, peerMA) => {
 		const singleFile = {};
 		const arrayBuf = await bytefiles[fileName].arrayBuffer();
 		singleFile[fileName] = new Uint8Array(arrayBuf);
@@ -156,7 +156,7 @@ const Sender = () => {
 			let stream;
 
 			try {
-				stream = await dialProtocol(node, peerMA);
+				stream = await dialProtocol(conn, peerMA);
 
 				const write = async function* () {
 					yield encode(CHUNK, {
@@ -235,6 +235,8 @@ const Sender = () => {
 						transferChunk(index, hash, chunk, sentBytes)
 					)
 				);
+
+				batch = null;
 			}
 		} catch (error) {
 			handleError(error, `sendOneFile [${fileName}]`);
@@ -246,11 +248,11 @@ const Sender = () => {
 		removeFile(fileName);
 	};
 
-	const send = async (fileNameKey) => {
+	const send = async (conn, fileNameKey) => {
 		try {
 			const peerMA = getRelayedMultiAddr(peerAdd);
 			if (fileNameKey) {
-				await sendOneFile(fileNameKey, files, peerMA);
+				await sendOneFile(conn, fileNameKey, files, peerMA);
 			}
 		} catch (error) {
 			setConnecting(false);
@@ -268,15 +270,19 @@ const Sender = () => {
 	};
 
 	const sendAll = async () => {
+		let conn;
 		try {
 			setConnecting(true);
 
 			const peerMA = getRelayedMultiAddr(peerAdd);
+			conn = await node.dial(peerMA, {
+				force: true,
+			});
 			// const rtt = await node.services.ping.ping(peerMA);
 			// console.log('Handshake in: ', rtt);
-
-			let stream = await dialProtocol(node, peerMA);
+			let stream = await dialProtocol(conn, peerMA);
 			console.log(stream);
+
 			await pipe(async function* () {
 				yield encode(START);
 			}, stream);
@@ -286,9 +292,11 @@ const Sender = () => {
 				setSending((prev) => ({ ...prev, [fileNameKey]: true }))
 			);
 
-			await Promise.all(Object.keys(files).map((file) => send(file)));
+			await Promise.all(
+				Object.keys(files).map((file) => send(conn, file))
+			);
 
-			stream = await dialProtocol(node, peerMA);
+			stream = await dialProtocol(conn, peerMA);
 			await pipe(async function* () {
 				yield encode(END);
 			}, stream);
@@ -302,12 +310,12 @@ const Sender = () => {
 					}
 				}
 			});
-
-			await stream.close();
 		} catch (error) {
 			setConnecting(false);
 			handleError(error, 'sendAll');
 			resetProgressAndSending();
+		} finally {
+			conn.close();
 		}
 	};
 	return (
