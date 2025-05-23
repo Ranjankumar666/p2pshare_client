@@ -1,4 +1,4 @@
-import { webRTC, webRTCDirect } from '@libp2p/webrtc';
+import { webRTC } from '@libp2p/webrtc';
 import { noise } from '@chainsafe/libp2p-noise';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { identify } from '@libp2p/identify';
@@ -6,7 +6,6 @@ import { webSockets } from '@libp2p/websockets';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
 import { bootstrap } from '@libp2p/bootstrap';
 import { autoNAT } from '@libp2p/autonat';
-import * as filters from '@libp2p/websockets/filters';
 import { ping } from '@libp2p/ping';
 
 import { BOOTSTRAP_NODES } from './constants';
@@ -15,7 +14,7 @@ import { dcutr } from '@libp2p/dcutr';
 /** @type {import('libp2p').Libp2pInit} */
 const defaultConfig = {
 	addresses: {
-		listen: ['/ws', '/webrtc', '/p2p-circuit'],
+		listen: ['/webrtc', '/p2p-circuit'],
 		// announce: ['/webrtc-direct'],
 	},
 	transports: [
@@ -23,9 +22,7 @@ const defaultConfig = {
 			stopTimeout: 60 * 1000, // Reduced from 120s
 			reservationTtl: 2 * 60 * 1000, // 2 minutes
 		}),
-		webSockets({
-			filter: filters.all,
-		}),
+		webSockets(),
 		webRTC({
 			rtcConfiguration: {
 				iceServers: [

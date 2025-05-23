@@ -83,9 +83,9 @@ self.onmessage = async function (event) {
 		self.postMessage({ ...res, fileSize: compressed.byteLength });
 	} else if (type === 'assemble') {
 		const blobs = [];
+		const { bytes, peerId } = data;
 
-		data.forEach((byteArrayMap) => {
-			console.log(byteArrayMap);
+		bytes.get(peerId).forEach((byteArrayMap) => {
 			const blob = assembleZipChunks(byteArrayMap);
 			blobs.push(blob);
 		});

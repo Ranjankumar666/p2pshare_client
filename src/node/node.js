@@ -24,8 +24,10 @@ const failed = new Set();
  * @type {import('@libp2p/interface').StreamHandler}
  */
 const handleProtocolStream = async ({ connection, stream }) => {
+	const peerId = connection.remotePeer.toString();
 	try {
 		const [type, indexFailed] = await convertStreamToFile(
+			peerId,
 			stream,
 			received,
 			failed
@@ -39,6 +41,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 			if (type === END) {
 				store.dispatch(setStartDownload(false));
 			} else if (type === START) {
+				received.delete(peerId);
 				store.dispatch(setStartDownload(true));
 			} else {
 				await pipe(async function* () {
@@ -83,9 +86,11 @@ export const createNode = async () => {
 
 	await waitUntilRelayReservation(node);
 
-	setupConnectionDebugging(node);
-	setupConnectionDebugging(node);
-	debugWebRTCConnections(node);
+	if (process.env.REACT_APP_DEBUG === 'true') {
+		setupConnectionDebugging(node);
+		setupConnectionDebugging(node);
+		debugWebRTCConnections(node);
+	}
 
 	console.log(node.getMultiaddrs());
 	return node;

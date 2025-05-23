@@ -14,13 +14,13 @@ export const CHUNK_SIZE = 221 * 1024;
 export const SIGNAL_TIMEOUT = 50000;
 
 export const getRelayedMultiAddr = (peerAdd) => {
-	// const webRTCMultiAddrs = REMOTE_RELAY_NODE.map((add) =>
-	// 	multiaddr(`${add}/p2p-circuit/webrtc/p2p/${peerAdd}`)
-	// );
+	const webRTCMultiAddrs = REMOTE_RELAY_NODE.map((add) =>
+		multiaddr(`${add}/p2p-circuit/webrtc/p2p/${peerAdd}`)
+	);
 
 	const p2pMultiAddrs = REMOTE_RELAY_NODE.map((add) =>
 		multiaddr(`${add}/p2p-circuit/p2p/${peerAdd}`)
 	);
 
-	return [...p2pMultiAddrs];
+	return [...webRTCMultiAddrs, ...p2pMultiAddrs];
 };

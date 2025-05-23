@@ -47,7 +47,7 @@ import FileAssemblyWorker from '../workers/fileCompression.worker';
  * @param {Map} received
  * @param {Set} failed
  */
-const convertStreamToFile = async (stream, received, failed) => {
+const convertStreamToFile = async (peerId, stream, received, failed) => {
 	// let receivedByteSize = 0;
 	let streamtype;
 	let indexFailed;
@@ -66,7 +66,7 @@ const convertStreamToFile = async (stream, received, failed) => {
 			streamtype = type;
 			if (type === END) {
 				console.log('Received: EOT packet ');
-				await assembleAndDownload(received, encode, stream);
+				await assembleAndDownload(peerId, received, encode, stream);
 				return;
 			} else if (type === START) {
 				console.log('File Transfer initiated');
@@ -74,18 +74,23 @@ const convertStreamToFile = async (stream, received, failed) => {
 			}
 
 			const computedHash = await hashChunk(chunk);
+
 			if (hash !== computedHash) {
 				// failed.add(index);
 				indexFailed = index;
 			} else {
+				if (!received.has(peerId)) {
+					received.set(peerId, new Map());
+				}
+
 				if (failed.has(index)) {
 					failed.delete(index);
 				}
 
-				if (!received.has(filename)) {
-					received.set(filename, new Map());
+				if (!received.get(peerId).has(filename)) {
+					received.get(peerId).set(filename, new Map());
 				}
-				received.get(filename).set(index, chunk);
+				received.get(peerId).get(filename).set(index, chunk);
 			}
 
 			return;
@@ -95,13 +100,16 @@ const convertStreamToFile = async (stream, received, failed) => {
 	return [streamtype, indexFailed];
 };
 
-const assembleAndDownload = async (received, encode, stream) => {
+const assembleAndDownload = async (peerId, received, encode, stream) => {
 	const worker = new FileAssemblyWorker();
 
 	const files = await new Promise((res) => {
 		worker.postMessage({
 			type: 'assemble',
-			data: received,
+			data: {
+				bytes: received,
+				peerId,
+			},
 		});
 
 		worker.onmessage = (ev) => res(ev.data);
