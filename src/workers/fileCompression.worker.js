@@ -49,7 +49,7 @@ const chunkify = async (fileData, fileSize, chunkSize = CHUNK_SIZE) => {
 
 const assembleZipChunks = (map) => {
 	// 1️⃣ Sort chunks by index
-	const sortedIndices = Array.from(map.keys()).sort((a, b) => a - b);
+	let sortedIndices = Array.from({ length: map.size }, (_, i) => i);
 
 	// 2️⃣ Merge all chunks into a single Uint8Array
 	let totalSize = sortedIndices.reduce(
@@ -69,6 +69,7 @@ const assembleZipChunks = (map) => {
 		console.log('All files combined');
 	}
 	// 3️⃣ Create a ZIP Blob
+	sortedIndices = null;
 	return new Blob([mergedArray], {
 		type: 'application/zip',
 	});
@@ -108,7 +109,6 @@ self.onmessage = async function (event) {
 
 		const batches = batchify(chunks, hashes);
 		self.postMessage({ batches, fileSize: compressed.byteLength });
-		
 	} else if (type === 'assemble') {
 		const blobs = [];
 		const { bytes, peerId } = data;
@@ -128,5 +128,12 @@ self.onmessage = async function (event) {
 		}
 
 		self.postMessage(files);
+	} else if (type === 'assembleFile') {
+		const { bytes, peerId, fileName } = data;
+		const byteArrayMap = bytes.get(peerId).get(fileName);
+		const blob = assembleZipChunks(byteArrayMap);
+		const file = unzipFileWASM(new Uint8Array(await blob.arrayBuffer()));
+
+		self.postMessage([file]);
 	}
 };

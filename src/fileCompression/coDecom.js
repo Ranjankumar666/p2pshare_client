@@ -43,7 +43,8 @@ export const zipStream = async (fileMap) => {
 			}
 			const transformedChunk = blob.slice(offset, offset + CHUNK_SIZE);
 			offset += CHUNK_SIZE;
-			controller.enqueue(await transformedChunk.arrayBuffer());
+			const byteArray = await transformedChunk.arrayBuffer();
+			controller.enqueue(byteArray);
 		},
 	});
 
@@ -54,12 +55,11 @@ export const zipStream = async (fileMap) => {
 				// const byteArray = new Uint8Array(chunk);
 
 				const hash = await hashChunk(chunk);
-				console.log(hash);
 				controller.enqueue(
 					encode(CHUNK, {
 						filename: fileName,
 						index: index++,
-						chunk,
+						chunk: new Uint8Array(chunk),
 						hash,
 					})
 				);
@@ -67,5 +67,5 @@ export const zipStream = async (fileMap) => {
 		})
 	);
 
-	return [transformed, blob.size];
+	return transformed;
 };

@@ -1,6 +1,6 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import { ACK, decode, encode, END, START } from '../buffer/codec';
+import { ACK, decode, encode, END, EOF, START } from '../buffer/codec';
 import FileAssemblyWorker from '../workers/fileCompression.worker';
 
 // const encode = (index, hash, chunk) => {
@@ -51,6 +51,7 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 	// let receivedByteSize = 0;
 	let streamtype;
 	let indexFailed;
+	let file;
 
 	await pipe(stream, async function process(source) {
 		for await (const rawChunk of source) {
@@ -64,10 +65,21 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			);
 
 			streamtype = type;
+			file = filename;
+
+			if (type === EOF) {
+				await assembleAndDownload(
+					peerId,
+					received,
+					encode,
+					stream,
+					filename
+				);
+				console.log('Received: EOF packet ');
+				return;
+			}
 			if (type === END) {
 				console.log('Received: EOT packet ');
-				console.log(received);
-				await assembleAndDownload(peerId, received, encode, stream);
 				return;
 			} else if (type === START) {
 				console.log('File Transfer initiated');
@@ -98,18 +110,28 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 		}
 	});
 
-	return [streamtype, indexFailed];
+	return [streamtype, indexFailed, file];
 };
 
-const assembleAndDownload = async (peerId, received, encode, stream) => {
+const assembleAndDownload = async (
+	peerId,
+	received,
+	encode,
+	stream,
+	fileName = null
+) => {
 	const worker = new FileAssemblyWorker();
-
+	let type = 'assemble';
+	if (fileName !== null) {
+		type = 'assembleFile';
+	}
 	const files = await new Promise((res) => {
 		worker.postMessage({
-			type: 'assemble',
+			type,
 			data: {
 				bytes: received,
 				peerId,
+				fileName,
 			},
 		});
 

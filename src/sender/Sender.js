@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
-import { encode, decode, END, START, ACK } from '../buffer/codec';
+import { encode, decode, END, START } from '../buffer/codec';
 import { getRelayedMultiAddr } from '../node/constants';
 import {
 	Input,
@@ -26,6 +26,7 @@ import {
 import { dialProtocol } from '../node/node.js';
 import { zipStream } from '../fileCompression/coDecom.js';
 import { CHUNK_SIZE } from './constants.js';
+import { sendEOFStream, sendStream } from '../node/sendStream.js';
 
 /**
  * @type {import('react').FC<{
@@ -46,23 +47,20 @@ const Sender = () => {
 
 	const handleFileChange = (e) => {
 		if (!e.target.files) return;
-		const { files } = e.target;
+		const { files: filesSelected } = e.target;
 
-		for (let file of files) {
+		console.log(files);
+		for (let file of filesSelected) {
 			if (files[file.name]) continue;
-			setFiles((oldState) => {
-				const newState = { ...oldState };
-				newState[file.name] = file;
+			setFiles((oldState) => ({
+				...oldState,
+				[file.name]: file,
+			}));
 
-				return newState;
-			});
-
-			setProgress((oldState) => {
-				const newState = { ...oldState };
-				newState[file.name] = 0;
-
-				return newState;
-			});
+			setProgress((oldState) => ({
+				...oldState,
+				[file.name]: 0,
+			}));
 
 			setError((oldState) => {
 				const newState = { ...oldState };
@@ -75,11 +73,10 @@ const Sender = () => {
 				return newState;
 			});
 
-			setSending((oldState) => {
-				const newState = { ...oldState };
-				newState[file.name] = false;
-				return newState;
-			});
+			setSending((oldState) => ({
+				...oldState,
+				[file.name]: false,
+			}));
 		}
 	};
 
@@ -136,68 +133,49 @@ const Sender = () => {
 		if (err?.message) setGenError(err.message);
 	};
 
-	const sendOneFile = async (conn, fileName, bytefiles, peerMA) => {
-		let singleFile = {};
-		singleFile[fileName] = bytefiles[fileName];
-		let [zippedStream, fileSize] = await zipStream(singleFile);
-		let sentBytes = [0];
-
-		const reader = zippedStream.getReader();
-
-		while (true) {
-			const { value, done } = await reader.read();
-			if (done) break;
-
-			let stream = await dialProtocol(conn, peerMA);
-
-			// Send
-			await pipe(async function* () {
-				yield value;
-			}, stream);
-
-			setProgress((oldState) => {
-				const newState = { ...oldState };
-				sentBytes[0] += CHUNK_SIZE;
-				newState[fileName] = (fileSize - sentBytes[0]) % 100;
-
-				return newState;
-			});
-
-			// Ack
-			await pipe(stream, async function (source) {
-				for await (let rawChunk of source) {
-					const { type } = decode(rawChunk.bufs[0]);
-
-					if (type === ACK) {
-						console.log('Sent successfully');
-						stream.close();
-					}
-				}
-			});
-		}
-
-		removeFile(fileName);
-	};
-
-	const send = async (conn, fileNameKey) => {
+	const send = async (conn, fileName) => {
 		try {
 			const peerMA = getRelayedMultiAddr(peerAdd);
-			if (fileNameKey) {
-				await sendOneFile(conn, fileNameKey, files, peerMA);
+
+			let singleFile = {};
+			singleFile[fileName] = files[fileName];
+			const fileSize = singleFile[fileName].size;
+			let zippedStream = await zipStream(singleFile);
+			let sentBytes = 0;
+
+			const reader = zippedStream.getReader();
+
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) {
+					await sendEOFStream(fileName, conn, peerMA);
+					break;
+				}
+
+				await sendStream(value, conn, peerMA);
+				sentBytes += CHUNK_SIZE;
+				const donePercent = ((sentBytes / fileSize) * 100).toFixed(1);
+
+				setProgress((prev) => ({
+					...prev,
+					[fileName]: donePercent,
+				}));
 			}
+
+			removeFile(fileName);
 		} catch (error) {
 			conn.close();
 			setConnecting(false);
-			handleError(error, `send [${fileNameKey}]`);
+			handleError(error, `send [${fileName}]`);
 			setError((prev) => ({
 				...prev,
-				[fileNameKey]: {
+				[fileName]: {
 					state: true,
 					msg: error.message,
 				},
 			}));
 		} finally {
-			resetProgressAndSending(fileNameKey);
+			resetProgressAndSending(fileName);
 		}
 	};
 

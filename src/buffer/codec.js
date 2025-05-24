@@ -9,6 +9,7 @@ export const ACK = 1;
 export const RETRY = 2;
 export const END = 3;
 export const START = 4;
+export const EOF = 5;
 
 /**
  * @param {number} index
@@ -92,6 +93,20 @@ const encodeStartOfTransferPacket = () => {
 /**
  *
  *
+ * @return {Uint8Array}
+ */
+const encodeEndOfFilePacket = (filename) => {
+	return Packet.encode(
+		Packet.create({
+			type: EOF,
+			endOfTransferPacket: { filename },
+		})
+	).finish();
+};
+
+/**
+ *
+ *
  * @param {number} type
  * @param {{
  *  index?: number;
@@ -119,6 +134,8 @@ const encode = (type, data = {}) => {
 			return encodeEndOfTransferPacket();
 		case START:
 			return encodeStartOfTransferPacket();
+		case EOF:
+			return encodeEndOfFilePacket(data.filename);
 		default:
 			throw new Error(`Unknown packet type: ${type}`);
 	}
@@ -152,6 +169,11 @@ const decode = (chunkPacket) => {
 		case START:
 			return {
 				type: decoded.type,
+			};
+		case EOF:
+			return {
+				type: decoded.type,
+				filename: decoded.filename,
 			};
 		default:
 			throw new Error(`Unknown packet type: ${decoded.type}`);

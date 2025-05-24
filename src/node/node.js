@@ -10,7 +10,7 @@ import {
 } from './constants';
 import { convertStreamToFile } from './utils';
 
-import { encode, END, START } from '../buffer/codec';
+import { encode, END, EOF, START } from '../buffer/codec';
 import { store } from '../state/store';
 import { setStartDownload } from '../state/stateReducer';
 import { debugWebRTCConnections, setupConnectionDebugging } from './debug';
@@ -27,7 +27,7 @@ const failed = new Set();
 const handleProtocolStream = async ({ connection, stream }) => {
 	const peerId = connection.remotePeer.toString();
 	try {
-		const [type, indexFailed] = await convertStreamToFile(
+		const [type, indexFailed, file] = await convertStreamToFile(
 			peerId,
 			stream,
 			received,
@@ -40,17 +40,13 @@ const handleProtocolStream = async ({ connection, stream }) => {
 			}, stream);
 		} else {
 			if (type === END) {
-				// manually clear ram
-				for (let file in received.get(peerId)) {
-					for (let index in received.get(peerId).get(file)) {
-						received.get(peerId).get(file).set(index, null);
-					}
-
-					received.get(peerId).set(file, null);
-				}
-				received.delete(peerId);
-
 				store.dispatch(setStartDownload(false));
+			} else if (type === EOF) {
+				for (let index in received.get(peerId).get(file)) {
+					received.get(peerId).get(file).set(index, null);
+				}
+
+				received.get(peerId).set(file, null);
 			} else if (type === START) {
 				store.dispatch(setStartDownload(true));
 			} else {

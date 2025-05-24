@@ -8,7 +8,8 @@
 						"ackPacket",
 						"retryPacket",
 						"endOfTransferPacket",
-						"startOfTransferPacket"
+						"startOfTransferPacket",
+						"endOfTransferPacket"
 					]
 				}
 			},
@@ -36,6 +37,10 @@
 				"startOfTransferPacket": {
 					"type": "StartOfTransferPacket",
 					"id": 6
+				},
+				"endOfFilePacket": {
+					"type": "EndOfFilePacket",
+					"id": 7
 				}
 			}
 		},
@@ -76,6 +81,14 @@
 		},
 		"StartOfTransferPacket": {
 			"fields": {}
+		},
+		"EndOfFilePacket": {
+			"fields": {
+				"filename": {
+					"type": "string",
+					"id": 4
+				}
+			}
 		}
 	}
 }
