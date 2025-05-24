@@ -270,7 +270,8 @@ const Sender = () => {
 			conn = await node.dial(peerMA, {
 				force: true,
 			});
-			console.log('RTT: ' + conn.rtt());
+			console.log('RTT: ' + conn.rtt);
+
 			let stream = await dialProtocol(conn, peerMA);
 			console.log(stream);
 
