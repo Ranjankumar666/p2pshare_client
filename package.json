@@ -20,6 +20,7 @@
 		"@testing-library/dom": "^10.4.0",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/react": "^16.2.0",
+		"@zip.js/zip.js": "^2.7.62",
 		"client": "file:",
 		"it-pipe": "^3.0.1",
 		"libp2p": "^2.7.1",

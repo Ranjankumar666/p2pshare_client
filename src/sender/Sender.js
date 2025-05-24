@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
-import { encode, decode, END, CHUNK, START } from '../buffer/codec';
+import { encode, decode, END, START, ACK } from '../buffer/codec';
 import { getRelayedMultiAddr } from '../node/constants';
 import {
 	Input,
@@ -23,8 +23,9 @@ import {
 	MdSend,
 	MdUpload,
 } from 'react-icons/md';
-import FileCompressionWorker from '../workers/fileCompression.worker.js';
 import { dialProtocol } from '../node/node.js';
+import { zipStream } from '../fileCompression/coDecom.js';
+import { CHUNK_SIZE } from './constants.js';
 
 /**
  * @type {import('react').FC<{
@@ -137,102 +138,42 @@ const Sender = () => {
 
 	const sendOneFile = async (conn, fileName, bytefiles, peerMA) => {
 		let singleFile = {};
-		let arrayBuf = await bytefiles[fileName].arrayBuffer();
-		singleFile[fileName] = new Uint8Array(arrayBuf);
-
-		const worker = new FileCompressionWorker();
-
-		let { batches, fileSize } = await new Promise((res) => {
-			worker.postMessage({ type: 'zip', data: singleFile });
-			worker.onmessage = (ev) => res(ev.data);
-		});
-
-		worker.terminate();
-
+		singleFile[fileName] = bytefiles[fileName];
+		let [zippedStream, fileSize] = await zipStream(singleFile);
 		let sentBytes = [0];
 
-		const transferChunk = async (index, hash, chunk, sentBytes) => {
-			let stream;
+		const reader = zippedStream.getReader();
 
-			try {
-				stream = await dialProtocol(conn, peerMA);
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
 
-				const write = async function* () {
-					yield encode(CHUNK, {
-						index,
-						hash,
-						chunk,
-						filename: fileName,
-					});
-				};
+			let stream = await dialProtocol(conn, peerMA);
 
-				const writeAgain = (resendIndex) =>
-					async function* () {
-						yield encode(CHUNK, {
-							index: resendIndex,
-							hash,
-							chunk,
-							filename: fileName,
-						});
-					};
+			// Send
+			await pipe(async function* () {
+				yield value;
+			}, stream);
 
-				const read = async function (source) {
-					for await (const rawChunk of source) {
-						const decodedChunk = decode(rawChunk.bufs[0]);
+			setProgress((oldState) => {
+				const newState = { ...oldState };
+				sentBytes[0] += CHUNK_SIZE;
+				newState[fileName] = (fileSize - sentBytes[0]) % 100;
 
-						if (decodedChunk.type === 1) {
-							sentBytes[0] += chunk.length;
-							const donePercent = (
-								(sentBytes[0] / fileSize) *
-								100
-							).toFixed(1);
+				return newState;
+			});
 
-							setProgress((prev) => ({
-								...prev,
-								[fileName]: donePercent,
-							}));
-							return;
-						}
+			// Ack
+			await pipe(stream, async function (source) {
+				for await (let rawChunk of source) {
+					const { type } = decode(rawChunk.bufs[0]);
 
-						console.log(`🔁 Retry requested for ${fileName}`);
-						stream = await dialProtocol(node, peerMA);
-						await pipe(writeAgain(decodedChunk.indices), stream);
-						await pipe(stream, read);
+					if (type === ACK) {
+						console.log('Sent successfully');
+						stream.close();
 					}
-				};
-
-				await pipe(write, stream);
-				await pipe(stream, read);
-			} catch (err) {
-				handleError(err, `transferChunk [${fileName}]`);
-				throw err;
-			} finally {
-				chunk = null;
-				hash = null;
-				if (stream?.close) await stream.close();
-			}
-		};
-
-		try {
-			for (let batch of batches) {
-				await Promise.all(
-					batch.map(([index, hash, chunk]) =>
-						transferChunk(index, hash, chunk, sentBytes)
-					)
-				);
-
-				batch = null;
-			}
-			batches = null;
-		} catch (error) {
-			handleError(error, `sendOneFile [${fileName}]`);
-			setConnecting(false);
-			resetProgressAndSending(fileName);
-			return;
-		} finally {
-			arrayBuf = null;
-			delete singleFile[fileName];
-			singleFile = null;
+				}
+			});
 		}
 
 		removeFile(fileName);

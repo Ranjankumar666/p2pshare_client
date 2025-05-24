@@ -66,6 +66,7 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			streamtype = type;
 			if (type === END) {
 				console.log('Received: EOT packet ');
+				console.log(received);
 				await assembleAndDownload(peerId, received, encode, stream);
 				return;
 			} else if (type === START) {
@@ -74,11 +75,11 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			}
 
 			const computedHash = await hashChunk(chunk);
-
 			if (hash !== computedHash) {
 				// failed.add(index);
 				indexFailed = index;
 			} else {
+				console.log('✅✅ Chunk Added');
 				if (!received.has(peerId)) {
 					received.set(peerId, new Map());
 				}

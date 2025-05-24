@@ -108,6 +108,7 @@ self.onmessage = async function (event) {
 
 		const batches = batchify(chunks, hashes);
 		self.postMessage({ batches, fileSize: compressed.byteLength });
+		
 	} else if (type === 'assemble') {
 		const blobs = [];
 		const { bytes, peerId } = data;
