@@ -40,6 +40,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 			}, stream);
 		} else {
 			if (type === END) {
+				// manually clear ram
 				for (let file in received.get(peerId)) {
 					for (let index in received.get(peerId).get(file)) {
 						received.get(peerId).get(file).set(index, null);
