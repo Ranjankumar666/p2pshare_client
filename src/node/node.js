@@ -40,8 +40,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 			}, stream);
 		} else {
 			if (type === END) {
-				store.dispatch(setStartDownload(false));
-			} else if (type === START) {
+				// manually clear ram
 				for (let file in received.get(peerId)) {
 					for (let index in received.get(peerId).get(file)) {
 						received.get(peerId).get(file).set(index, null);
@@ -50,6 +49,9 @@ const handleProtocolStream = async ({ connection, stream }) => {
 					received.get(peerId).set(file, null);
 				}
 				received.delete(peerId);
+
+				store.dispatch(setStartDownload(false));
+			} else if (type === START) {
 				store.dispatch(setStartDownload(true));
 			} else {
 				await pipe(async function* () {
