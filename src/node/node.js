@@ -42,6 +42,13 @@ const handleProtocolStream = async ({ connection, stream }) => {
 			if (type === END) {
 				store.dispatch(setStartDownload(false));
 			} else if (type === START) {
+				for (let file in received.get(peerId)) {
+					for (let index in received.get(peerId).get(file)) {
+						received.get(peerId).get(file).set(index, null);
+					}
+
+					received.get(peerId).set(file, null);
+				}
 				received.delete(peerId);
 				store.dispatch(setStartDownload(true));
 			} else {
