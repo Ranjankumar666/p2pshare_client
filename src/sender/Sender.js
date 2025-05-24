@@ -270,8 +270,7 @@ const Sender = () => {
 			conn = await node.dial(peerMA, {
 				force: true,
 			});
-			// const rtt = await node.services.ping.ping(peerMA);
-			// console.log('Handshake in: ', rtt);
+			console.log('RTT: ' + conn.rtt());
 			let stream = await dialProtocol(conn, peerMA);
 			console.log(stream);
 
