@@ -8,7 +8,6 @@ import {
 	Group,
 	Text,
 	Stack,
-	ProgressCircle,
 	ButtonGroup,
 	Icon,
 	SimpleGrid,
@@ -413,12 +412,6 @@ const Sender = () => {
 						<Card.Footer>
 							{sending[file.name] ? (
 								<>
-									<ProgressCircle.Root value={null} size="xs">
-										<ProgressCircle.Circle>
-											<ProgressCircle.Track />
-											<ProgressCircle.Range strokeLinecap="round" />
-										</ProgressCircle.Circle>
-									</ProgressCircle.Root>
 									<Text size="md">
 										{`${progress[file.name]}`.length ===
 											1 && progress[file.name] !== 0

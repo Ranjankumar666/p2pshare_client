@@ -8,7 +8,7 @@
 importScripts('/wasm_exec.js');
 
 const go = new Go();
-const BATCH_SIZE = 60;
+const BATCH_SIZE = 40;
 const CHUNK_SIZE = 12 * 1024;
 
 let goReady = WebAssembly.instantiateStreaming(
