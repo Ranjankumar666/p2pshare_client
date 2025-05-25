@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
-import { encode, decode, END, START } from '../buffer/codec';
+import { encode, decode, END, START, ACK } from '../buffer/codec';
 import { getRelayedMultiAddr } from '../node/constants';
 import {
 	Input,
@@ -214,7 +214,7 @@ const Sender = () => {
 			await pipe(stream, async function (source) {
 				for await (const rawChunk of source) {
 					const decodedChunk = decode(rawChunk.bufs[0]);
-					if (decodedChunk.type === 1) {
+					if (decodedChunk.type === ACK) {
 						console.log(`✅ Transferred successfully`);
 						return;
 					}

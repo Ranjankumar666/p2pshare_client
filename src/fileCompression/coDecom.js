@@ -1,6 +1,7 @@
-import { BlobReader, BlobWriter, ZipWriter } from '@zip.js/zip.js';
+import { BlobReader, BlobWriter, ZipReader, ZipWriter } from '@zip.js/zip.js';
 import { CHUNK_SIZE } from '../sender/constants';
 import { CHUNK, encode } from '../buffer/codec';
+import { getChunks } from '../p2pShareDB/db';
 
 async function hashChunk(chunk) {
 	const hashBuffer = await crypto.subtle.digest('SHA-256', chunk);
@@ -68,4 +69,26 @@ export const zipStream = async (fileMap) => {
 	);
 
 	return transformed;
+};
+
+export const saveFile = async (peer, fileName) => {
+	const chunkStream = getChunks(peer, fileName);
+	const zip = new ZipReader(chunkStream);
+	const entries = await zip.getEntries();
+
+	for (const entry of entries) {
+		console.log('File name downloaded: ', entry.filename);
+
+		const handle = await window.showSaveFilePicker({
+			suggestedName: fileName,
+		});
+		const saveStream = await handle.createWritable();
+		try {
+			// Stream chunks from IndexedDB to the file
+			await entry.getData(saveStream);
+		} catch (err) {
+			console.error('File save failed:', err);
+			await saveStream.abort(); // Rollback partially written file
+		}
+	}
 };

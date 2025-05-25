@@ -13,9 +13,10 @@ import {
 	Icon,
 } from '@chakra-ui/react';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearFile, saveFile } from '../p2pShareDB/db';
+import { clearFile } from '../p2pShareDB/db';
 import { removeFileDownload } from '../state/stateReducer';
 import { MdSave } from 'react-icons/md';
+import { saveFile } from '../fileCompression/coDecom';
 
 /**
  * @type {import('react').FC<{
@@ -85,7 +86,12 @@ const Receiver = () => {
 			)}
 			{Object.keys(filesDownloaded).map((fileName) => (
 				<Flex key={fileName}>
-					<Text size="xs" paddingX={'2'}>
+					<Text
+						paddingX={'2'}
+						size={['sm', 'md', 'lg', 'lg']}
+						textWrap="true"
+						color="fg.subtle"
+					>
 						{fileName.split('/')[1]}
 					</Text>
 					<Button

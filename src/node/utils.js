@@ -1,8 +1,7 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
 import { decode, END, EOF, START } from '../buffer/codec';
-import FileAssemblyWorker from '../workers/fileCompression.worker';
-import { clearDB, openDB, storeChunk } from '../p2pShareDB/db';
+import { openDB, storeChunk } from '../p2pShareDB/db';
 import { sendACKStream } from './sendStream';
 import { setFileDownload, setStartDownload } from '../state/stateReducer';
 import { store } from '../state/store';
@@ -72,13 +71,6 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			file = filename;
 
 			if (type === EOF) {
-				// await assembleAndDownload(
-				// 	peerId,
-				// 	received,
-				// 	encode,
-				// 	stream,
-				// 	filename
-				// );
 				console.log('Received: EOF packet for ', filename);
 				return;
 			}
@@ -96,19 +88,6 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 				indexFailed = index;
 			} else {
 				console.log('✅✅ Chunk Added');
-				// if (!received.has(peerId)) {
-				// 	received.set(peerId, new Map());
-				// }
-
-				// if (failed.has(index)) {
-				// 	failed.delete(index);
-				// }
-
-				// if (!received.get(peerId).has(filename)) {
-				// 	received.get(peerId).set(filename, new Map());
-				// }
-				// received.get(peerId).get(filename).set(index, chunk);
-
 				await storeChunk(peerId, filename, index, chunk);
 			}
 
@@ -119,82 +98,8 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 	return [streamtype, indexFailed, file];
 };
 
-export const assembleAndDownload = async (
-	peerId,
-	received,
-	stream,
-	fileName = null
-) => {
-	const worker = new FileAssemblyWorker();
-	let type = 'assemble';
-	if (fileName !== null) {
-		type = 'assembleFile';
-	}
-	const files = await new Promise((res) => {
-		worker.postMessage({
-			type,
-			data: {
-				bytes: received,
-				peerId,
-				fileName,
-			},
-		});
-
-		worker.onmessage = (ev) => res(ev.data);
-	});
-
-	worker.terminate();
-
-	// await Promise.all(blobs.map((blob) => handleFileDownload(blob)));
-	// for (let blob of blobs) {
-	// 	await handleFileDownload(blob);
-	// }
-	if (files)
-		for (let file of files) {
-			handleFileDownload(file);
-		}
-
-	await sendACKStream(stream);
-};
-
-const handleFileDownload = (filesDownload) => {
-	console.log(filesDownload);
-	filesDownload?.forEach((val, fileName) => {
-		const blob = new Blob([val]);
-		const url = URL.createObjectURL(blob);
-		const anchor = document.createElement('a');
-		anchor.href = url;
-		anchor.download = fileName;
-		document.body.appendChild(anchor);
-		anchor.click();
-
-		requestAnimationFrame(() => {
-			document.body.removeChild(anchor);
-			URL.revokeObjectURL(url);
-		});
-	});
-};
-
-const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
-	const chunks = [];
-	const hashes = [];
-
-	let offset = 0;
-	while (offset < fileSize) {
-		const slice = fileData.slice(offset, offset + chunkSize);
-		const hash = await hashChunk(slice);
-		chunks.push(slice);
-		hashes.push(hash);
-
-		offset += chunkSize;
-	}
-
-	return { chunks, hashes };
-};
-
 export const reception = async (type, stream, peerId, file) => {
 	if (type === END) {
-		// await clearDB();
 		store.dispatch(setStartDownload(false));
 	} else if (type === EOF) {
 		console.log('File received: ', {
@@ -216,10 +121,4 @@ export const reception = async (type, stream, peerId, file) => {
 	}
 };
 
-export {
-	// encode,
-	// decode,
-	convertStreamToFile,
-	handleFileDownload,
-	chunkify,
-};
+export { convertStreamToFile };
