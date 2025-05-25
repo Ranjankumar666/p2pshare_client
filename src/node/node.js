@@ -8,9 +8,9 @@ import {
 	REMOTE_RELAY_NODE_MULTIADD,
 	SIGNAL_TIMEOUT,
 } from './constants';
-import { convertStreamToFile } from './utils';
+import { convertStreamToFile, reception } from './utils';
 
-import { encode, END, EOF, START } from '../buffer/codec';
+import { encode } from '../buffer/codec';
 import { store } from '../state/store';
 import { setStartDownload } from '../state/stateReducer';
 import { debugWebRTCConnections, setupConnectionDebugging } from './debug';
@@ -39,21 +39,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 				yield encode(2, { indices: [indexFailed] });
 			}, stream);
 		} else {
-			if (type === END) {
-				store.dispatch(setStartDownload(false));
-			} else if (type === EOF) {
-				for (let index in received.get(peerId).get(file)) {
-					received.get(peerId).get(file).set(index, null);
-				}
-
-				received.get(peerId).set(file, null);
-			} else if (type === START) {
-				store.dispatch(setStartDownload(true));
-			} else {
-				await pipe(async function* () {
-					yield encode(1);
-				}, stream);
-			}
+			await reception(type, stream, peerId, file);
 		}
 	} catch (error) {
 		console.error('Error handling protocol stream:', error);

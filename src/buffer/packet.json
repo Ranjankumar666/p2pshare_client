@@ -9,7 +9,7 @@
 						"retryPacket",
 						"endOfTransferPacket",
 						"startOfTransferPacket",
-						"endOfTransferPacket"
+						"endOfFilePacket"
 					]
 				}
 			},
@@ -86,7 +86,7 @@
 			"fields": {
 				"filename": {
 					"type": "string",
-					"id": 4
+					"id": 1
 				}
 			}
 		}

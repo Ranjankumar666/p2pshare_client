@@ -1,7 +1,11 @@
 import { pipe } from 'it-pipe';
 import { hashChunk } from '../integrity/fileIntegrity';
-import { ACK, decode, encode, END, EOF, START } from '../buffer/codec';
+import { decode, END, EOF, START } from '../buffer/codec';
 import FileAssemblyWorker from '../workers/fileCompression.worker';
+import { clearDB, openDB, storeChunk } from '../p2pShareDB/db';
+import { sendACKStream } from './sendStream';
+import { setFileDownload, setStartDownload } from '../state/stateReducer';
+import { store } from '../state/store';
 
 // const encode = (index, hash, chunk) => {
 // 	const indexBuffer = new Uint32Array([index]); // 4 bytes
@@ -68,14 +72,14 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			file = filename;
 
 			if (type === EOF) {
-				await assembleAndDownload(
-					peerId,
-					received,
-					encode,
-					stream,
-					filename
-				);
-				console.log('Received: EOF packet ');
+				// await assembleAndDownload(
+				// 	peerId,
+				// 	received,
+				// 	encode,
+				// 	stream,
+				// 	filename
+				// );
+				console.log('Received: EOF packet for ', filename);
 				return;
 			}
 			if (type === END) {
@@ -92,18 +96,20 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 				indexFailed = index;
 			} else {
 				console.log('✅✅ Chunk Added');
-				if (!received.has(peerId)) {
-					received.set(peerId, new Map());
-				}
+				// if (!received.has(peerId)) {
+				// 	received.set(peerId, new Map());
+				// }
 
-				if (failed.has(index)) {
-					failed.delete(index);
-				}
+				// if (failed.has(index)) {
+				// 	failed.delete(index);
+				// }
 
-				if (!received.get(peerId).has(filename)) {
-					received.get(peerId).set(filename, new Map());
-				}
-				received.get(peerId).get(filename).set(index, chunk);
+				// if (!received.get(peerId).has(filename)) {
+				// 	received.get(peerId).set(filename, new Map());
+				// }
+				// received.get(peerId).get(filename).set(index, chunk);
+
+				await storeChunk(peerId, filename, index, chunk);
 			}
 
 			return;
@@ -113,10 +119,9 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 	return [streamtype, indexFailed, file];
 };
 
-const assembleAndDownload = async (
+export const assembleAndDownload = async (
 	peerId,
 	received,
-	encode,
 	stream,
 	fileName = null
 ) => {
@@ -149,9 +154,7 @@ const assembleAndDownload = async (
 			handleFileDownload(file);
 		}
 
-	await pipe(async function* () {
-		yield encode(ACK);
-	}, stream);
+	await sendACKStream(stream);
 };
 
 const handleFileDownload = (filesDownload) => {
@@ -187,6 +190,30 @@ const chunkify = async (fileData, fileSize, chunkSize = 10 * 1024) => {
 	}
 
 	return { chunks, hashes };
+};
+
+export const reception = async (type, stream, peerId, file) => {
+	if (type === END) {
+		// await clearDB();
+		store.dispatch(setStartDownload(false));
+	} else if (type === EOF) {
+		console.log('File received: ', {
+			peerId,
+			fileName: file,
+		});
+		await sendACKStream(stream);
+		store.dispatch(
+			setFileDownload({
+				peerId,
+				fileName: file,
+			})
+		);
+	} else if (type === START) {
+		await openDB();
+		store.dispatch(setStartDownload(true));
+	} else {
+		await sendACKStream(stream);
+	}
 };
 
 export {

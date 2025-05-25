@@ -6,6 +6,7 @@ export const stateSlice = createSlice({
 		node: undefined,
 		err: undefined,
 		startedDownload: false,
+		filesDownloaded: {},
 	},
 	reducers: {
 		setNode: (state, action) => {
@@ -21,9 +22,26 @@ export const stateSlice = createSlice({
 		delError: (state, action) => {
 			state.err = undefined;
 		},
+		setFileDownload: (state, action) => {
+			const key = action.payload.peerId + '/' + action.payload.fileName;
+			state.filesDownloaded = {
+				...state.filesDownloaded,
+				[key]: true,
+			};
+		},
+		removeFileDownload: (state, action) => {
+			const key = action.payload;
+			delete state.filesDownloaded[key];
+		},
 	},
 });
 
-export const { setNode, setErr, delError, setStartDownload } =
-	stateSlice.actions;
+export const {
+	setNode,
+	setErr,
+	delError,
+	setStartDownload,
+	setFileDownload,
+	removeFileDownload,
+} = stateSlice.actions;
 export default stateSlice.reducer;

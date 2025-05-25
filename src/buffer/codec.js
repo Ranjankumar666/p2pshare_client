@@ -99,7 +99,7 @@ const encodeEndOfFilePacket = (filename) => {
 	return Packet.encode(
 		Packet.create({
 			type: EOF,
-			endOfTransferPacket: { filename },
+			endOfFilePacket: { filename },
 		})
 	).finish();
 };
@@ -173,7 +173,7 @@ const decode = (chunkPacket) => {
 		case EOF:
 			return {
 				type: decoded.type,
-				filename: decoded.filename,
+				filename: decoded.endOfFilePacket.filename,
 			};
 		default:
 			throw new Error(`Unknown packet type: ${decoded.type}`);

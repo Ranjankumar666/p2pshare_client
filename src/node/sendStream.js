@@ -35,3 +35,9 @@ export const sendEOFStream = async (filename, conn, peerMA) => {
 
 	await pipe(stream, responseReader(stream));
 };
+
+export const sendACKStream = async (stream) => {
+	await pipe(async function* () {
+		yield encode(ACK);
+	}, stream);
+};
