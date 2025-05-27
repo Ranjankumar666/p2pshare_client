@@ -22,5 +22,5 @@ export const getRelayedMultiAddr = (peerAdd) => {
 		multiaddr(`${add}/p2p-circuit/p2p/${peerAdd}`)
 	);
 
-	return [...webRTCMultiAddrs, ...p2pMultiAddrs];
+	return [...p2pMultiAddrs, ...webRTCMultiAddrs];
 };

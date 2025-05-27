@@ -95,6 +95,8 @@ const defaultConfig = {
 	connectionEncrypters: [noise()],
 	streamMuxers: [
 		yamux({
+			initialStreamWindowSize: 16 * 1024 * 1024, // 16MB
+			initialConnectionWindowSize: 64 * 1024 * 1024, // 64MB
 			maxInboundStreams: 1000,
 			maxOutboundStreams: 1000,
 			maxMessageSize: 256 * 1024 * 1024, // 256MB
