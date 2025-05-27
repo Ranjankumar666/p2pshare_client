@@ -13,10 +13,10 @@ import {
 	Icon,
 } from '@chakra-ui/react';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearFile } from '../p2pShareDB/db';
-import { removeFileDownload } from '../state/stateReducer';
+import { clearFile } from '../../../p2pShareDB/db';
+import { removeFileDownload } from '../../../state/stateReducer';
 import { MdSave } from 'react-icons/md';
-import { saveFile } from '../fileCompression/coDecom';
+import { saveFile } from '../../../fileCompression/coDecom';
 
 /**
  * @type {import('react').FC<{

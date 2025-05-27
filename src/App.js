@@ -1,7 +1,7 @@
 import './App.css';
 import { useEffect } from 'react';
-import Sender from './sender/Sender';
-import Receiver from './receiver/Receiver';
+import Sender from './components/pages/sender/Sender';
+import Receiver from './components/pages/receiver/Receiver';
 import { createNode } from './node/node';
 import {
 	Box,

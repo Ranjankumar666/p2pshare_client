@@ -7,7 +7,7 @@ import {
 	WEBRTC_CODE,
 	REMOTE_RELAY_NODE_MULTIADD,
 	SIGNAL_TIMEOUT,
-} from './constants';
+} from '../utils/constants';
 import { convertStreamToFile, reception } from './utils';
 
 import { encode } from '../buffer/codec';

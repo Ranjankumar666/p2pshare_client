@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
-import { encode, decode, END, START, ACK } from '../buffer/codec';
-import { getRelayedMultiAddr, roundMB } from '../node/constants';
+import { encode, decode, END, START, ACK } from '../../../buffer/codec.js';
+import { getRelayedMultiAddr, roundMB, CHUNK_SIZE } from '../../../utils/constants.js';
 import {
 	Input,
 	Button,
@@ -24,10 +24,9 @@ import {
 	MdSend,
 	MdUpload,
 } from 'react-icons/md';
-import { dialProtocol } from '../node/node.js';
-import { batchStream, zipStream } from '../fileCompression/coDecom.js';
-import { CHUNK_SIZE } from './constants.js';
-import { sendEOFStream, sendStream } from '../node/sendStream.js';
+import { dialProtocol } from '../../../node/node.js';
+import { batchStream, zipStream } from '../../../fileCompression/coDecom.js';
+import { sendEOFStream, sendStream } from '../../../node/sendStream.js';
 
 /**
  * @type {import('react').FC<{

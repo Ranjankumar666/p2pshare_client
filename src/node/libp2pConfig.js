@@ -8,7 +8,7 @@ import { bootstrap } from '@libp2p/bootstrap';
 import { autoNAT } from '@libp2p/autonat';
 import { ping } from '@libp2p/ping';
 
-import { BOOTSTRAP_NODES } from './constants';
+import { BOOTSTRAP_NODES } from '../utils/constants.js';
 import { dcutr } from '@libp2p/dcutr';
 
 /** @type {import('libp2p').Libp2pInit} */
