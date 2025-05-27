@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
-import { pipe } from 'it-pipe';
-import { encode, decode, END, START, ACK } from '../../../buffer/codec.js';
-import { getRelayedMultiAddr, roundMB, CHUNK_SIZE } from '../../../utils/constants.js';
+import { encode, END, START } from '../../../buffer/codec.js';
+import {
+	getRelayedMultiAddr,
+	roundMB,
+	CHUNK_SIZE,
+} from '../../../utils/constants.js';
 import {
 	Input,
 	Button,
@@ -24,9 +27,12 @@ import {
 	MdSend,
 	MdUpload,
 } from 'react-icons/md';
-import { dialProtocol } from '../../../node/node.js';
 import { batchStream, zipStream } from '../../../fileCompression/coDecom.js';
-import { sendEOFStream, sendStream } from '../../../node/sendStream.js';
+import {
+	sendEOFStream,
+	sendStream,
+	sendStreamWithoutAck,
+} from '../../../node/sendStream.js';
 
 /**
  * @type {import('react').FC<{
@@ -214,6 +220,7 @@ const Sender = () => {
 	};
 
 	const sendAll = async () => {
+		/** @type {import('@libp2p/interface').Connection}*/
 		let conn;
 		try {
 			setConnecting(true);
@@ -222,14 +229,8 @@ const Sender = () => {
 			conn = await node.dial(peerMA, {
 				force: true,
 			});
-			console.log('RTT: ' + conn.rtt);
 
-			let stream = await dialProtocol(conn, peerMA);
-			console.log(stream);
-
-			await pipe(async function* () {
-				yield encode(START);
-			}, stream);
+			await sendStreamWithoutAck(encode(START), conn, peerMA);
 			setConnecting(false);
 
 			Object.keys(files).forEach((fileNameKey) =>
@@ -239,27 +240,13 @@ const Sender = () => {
 			await Promise.all(
 				Object.keys(files).map((file) => send(conn, file))
 			);
-
-			stream = await dialProtocol(conn, peerMA);
-			await pipe(async function* () {
-				yield encode(END);
-			}, stream);
-
-			await pipe(stream, async function (source) {
-				for await (const rawChunk of source) {
-					const decodedChunk = decode(rawChunk.bufs[0]);
-					if (decodedChunk.type === ACK) {
-						console.log(`✅ Transferred successfully`);
-						return;
-					}
-				}
-			});
+			await sendStream(encode(END), conn, peerMA);
 		} catch (error) {
 			setConnecting(false);
 			handleError(error, 'sendAll');
 			resetProgressAndSending();
 		} finally {
-			conn.close();
+			if (conn && conn.status === 'open') conn.close();
 		}
 	};
 	return (

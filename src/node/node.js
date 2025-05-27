@@ -10,14 +10,12 @@ import {
 } from '../utils/constants';
 import { convertStreamToFile, reception } from './utils';
 
-import { encode } from '../buffer/codec';
+import { encode, RETRY } from '../buffer/codec';
 import { store } from '../state/store';
-import { setStartDownload } from '../state/stateReducer';
+import { setErr, setStartDownload } from '../state/stateReducer';
 import { debugWebRTCConnections, setupConnectionDebugging } from './debug';
 
 export const isWebRTC = (ma) => ma.protocols().includes(WEBRTC_CODE);
-const received = new Map();
-const failed = new Set();
 
 /**
  *
@@ -29,14 +27,11 @@ const handleProtocolStream = async ({ connection, stream }) => {
 	try {
 		const [type, indexFailed, file] = await convertStreamToFile(
 			peerId,
-			stream,
-			received,
-			failed
+			stream
 		);
 		if (indexFailed) {
-			//
 			await pipe(async function* () {
-				yield encode(2, { indices: [indexFailed] });
+				yield encode(RETRY, { indices: [indexFailed] });
 			}, stream);
 		} else {
 			await reception(type, stream, peerId, file);
@@ -44,6 +39,7 @@ const handleProtocolStream = async ({ connection, stream }) => {
 	} catch (error) {
 		console.error('Error handling protocol stream:', error);
 		store.dispatch(setStartDownload(false));
+		store.dispatch(setErr(error.message));
 		// Retry logic or error handling can be added here
 		await stream.close();
 		await connection.close();

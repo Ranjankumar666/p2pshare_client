@@ -50,7 +50,7 @@ import { store } from '../state/store';
  * @param {Map} received
  * @param {Set} failed
  */
-const convertStreamToFile = async (peerId, stream, received, failed) => {
+const convertStreamToFile = async (peerId, stream) => {
 	// let receivedByteSize = 0;
 	let streamtype;
 	let indexFailed;
@@ -58,13 +58,13 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 
 	await pipe(stream, async function process(source) {
 		for await (const rawChunk of source) {
-			if (!(rawChunk.bufs[0] instanceof Uint8Array)) {
+			if (!(rawChunk.subarray() instanceof Uint8Array)) {
 				console.error('Received non-Uint8Array chunk:', rawChunk);
 				continue;
 			}
 
 			const { type, index, hash, chunk, filename } = decode(
-				rawChunk.bufs[0]
+				rawChunk.subarray()
 			);
 
 			streamtype = type;
@@ -85,6 +85,7 @@ const convertStreamToFile = async (peerId, stream, received, failed) => {
 			const computedHash = await hashChunk(chunk);
 			if (hash !== computedHash) {
 				// failed.add(index);
+				console.log("❌❌ Chunk's hash does not match");
 				indexFailed = index;
 			} else {
 				console.log('✅✅ Chunk Added');
