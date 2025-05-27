@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { pipe } from 'it-pipe';
 import { encode, decode, END, START, ACK } from '../buffer/codec';
-import { getRelayedMultiAddr } from '../node/constants';
+import { getRelayedMultiAddr, roundMB } from '../node/constants';
 import {
 	Input,
 	Button,
@@ -14,6 +14,7 @@ import {
 	Card,
 	Avatar,
 	Heading,
+	Flex,
 } from '@chakra-ui/react';
 import { useSelector } from 'react-redux';
 import {
@@ -24,7 +25,7 @@ import {
 	MdUpload,
 } from 'react-icons/md';
 import { dialProtocol } from '../node/node.js';
-import { zipStream } from '../fileCompression/coDecom.js';
+import { batchStream, zipStream } from '../fileCompression/coDecom.js';
 import { CHUNK_SIZE } from './constants.js';
 import { sendEOFStream, sendStream } from '../node/sendStream.js';
 
@@ -59,7 +60,11 @@ const Sender = () => {
 
 			setProgress((oldState) => ({
 				...oldState,
-				[file.name]: 0,
+				[file.name]: {
+					percent: 0,
+					bytes: 0,
+					total: file.size,
+				},
 			}));
 
 			setError((oldState) => {
@@ -121,7 +126,7 @@ const Sender = () => {
 			setProgress((oldState) => {
 				const newState = { ...oldState };
 				for (let fileName in newState) {
-					newState[fileName] = 0;
+					newState[fileName] = null;
 				}
 				return newState;
 			});
@@ -141,9 +146,14 @@ const Sender = () => {
 			singleFile[fileName] = files[fileName];
 			const fileSize = singleFile[fileName].size;
 			let zippedStream = await zipStream(singleFile);
-			let sentBytes = 0;
+			const batches = batchStream(zippedStream);
+			let sentBytes = {
+				percent: 0,
+				bytes: 0,
+				total: fileSize,
+			};
 
-			const reader = zippedStream.getReader();
+			const reader = batches.getReader();
 
 			while (true) {
 				const { value, done } = await reader.read();
@@ -152,14 +162,39 @@ const Sender = () => {
 					break;
 				}
 
-				await sendStream(value, conn, peerMA);
-				sentBytes += CHUNK_SIZE;
-				const donePercent = ((sentBytes / fileSize) * 100).toFixed(1);
+				const batch = [];
 
-				setProgress((prev) => ({
-					...prev,
-					[fileName]: donePercent,
-				}));
+				for (let chunk of value) {
+					batch.push(
+						new Promise(async (res) => {
+							await sendStream(chunk, conn, peerMA);
+							sentBytes.bytes += CHUNK_SIZE;
+							const donePercent = (
+								(sentBytes.bytes / fileSize) *
+								100
+							).toFixed(1);
+							sentBytes.percent = donePercent;
+
+							setProgress((prev) => ({
+								...prev,
+								[fileName]: { ...sentBytes },
+							}));
+
+							res();
+						})
+					);
+				}
+
+				await Promise.all(batch).catch((err) => {
+					handleError(err, `send [${fileName}] batch`);
+					setError((prev) => ({
+						...prev,
+						[fileName]: {
+							state: true,
+							msg: err.message,
+						},
+					}));
+				});
 			}
 
 			removeFile(fileName);
@@ -330,22 +365,37 @@ const Sender = () => {
 
 						<Card.Footer>
 							{sending[file.name] ? (
-								<>
-									<Text size="md">
-										{`${progress[file.name]}`.length ===
-											1 && progress[file.name] !== 0
+								<Flex
+									justify="space-between"
+									align="center"
+									width="100%"
+								>
+									<Text size="xs" alignItems="">
+										{`${progress[file.name].bytes}`
+											.length === 1 &&
+										progress[file.name].percent !== 0
 											? Math.round(
 													parseInt(
 														'0' +
 															progress[file.name]
+																.percent
 													)
 											  )
 											: parseInt(
-													'0' + progress[file.name]
+													'0' +
+														progress[file.name]
+															.percent
 											  )}{' '}
 										%
 									</Text>
-								</>
+									<Text size="xs">
+										{`(${roundMB(
+											progress[file.name].bytes
+										)} / ${roundMB(
+											progress[file.name].total
+										)} MB)`}
+									</Text>
+								</Flex>
 							) : (
 								<ButtonGroup>
 									<Button

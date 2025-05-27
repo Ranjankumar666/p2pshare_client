@@ -24,3 +24,7 @@ export const getRelayedMultiAddr = (peerAdd) => {
 
 	return [...p2pMultiAddrs, ...webRTCMultiAddrs];
 };
+
+export const roundMB = (bytes) => {
+	return (bytes / (1024 * 1024)).toFixed(1);
+};

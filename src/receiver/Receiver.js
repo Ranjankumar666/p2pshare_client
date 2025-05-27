@@ -26,6 +26,8 @@ const Receiver = () => {
 	const node = useSelector((state) => state.node);
 	const startedDownload = useSelector((state) => state.startedDownload);
 	const filesDownloaded = useSelector((state) => state.filesDownloaded);
+	const [genError, setGenError] = useState();
+
 	const dispatch = useDispatch();
 
 	const [addresses, setAddresses] = useState();
@@ -33,6 +35,11 @@ const Receiver = () => {
 	useEffect(() => {
 		setAddresses([node?.peerId.toString()]);
 	}, [node]);
+
+	const handleError = (err, context = '') => {
+		console.error(`❌ Error${context ? ' in ' + context : ''}:`, err);
+		if (err?.message) setGenError(err.message);
+	};
 
 	const MainComp = (
 		<Stack align="center">
@@ -99,9 +106,17 @@ const Receiver = () => {
 						size="xs"
 						onClick={async () => {
 							const [peer, file] = fileName.split('/');
-							await saveFile(peer, file);
-							await clearFile(peer, file);
-							dispatch(removeFileDownload(fileName));
+
+							try {
+								await saveFile(peer, file);
+								await clearFile(peer, file);
+								dispatch(removeFileDownload(fileName));
+							} catch (error) {
+								handleError(
+									error,
+									`while saving file ${fileName}`
+								);
+							}
 						}}
 					>
 						<Icon size="xs">

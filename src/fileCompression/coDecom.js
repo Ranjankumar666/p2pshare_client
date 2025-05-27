@@ -1,5 +1,5 @@
 import { BlobReader, BlobWriter, ZipReader, ZipWriter } from '@zip.js/zip.js';
-import { CHUNK_SIZE } from '../sender/constants';
+import { BATCH_SIZE, CHUNK_SIZE } from '../sender/constants';
 import { CHUNK, encode } from '../buffer/codec';
 import { getChunks } from '../p2pShareDB/db';
 
@@ -91,4 +91,23 @@ export const saveFile = async (peer, fileName) => {
 			await saveStream.abort(); // Rollback partially written file
 		}
 	}
+};
+
+export const batchStream = (stream, batch = BATCH_SIZE) => {
+	let buffer = [];
+
+	return stream.pipeThrough(new TransformStream({
+		transform: (chunk, controller) => {
+			buffer.push(chunk);
+			if (buffer.length >= batch) {
+				controller.enqueue(buffer);
+				buffer = [];
+			}
+		},
+		flush: (controller) => {
+			if (buffer.length > 0) {
+				controller.enqueue(buffer);
+			}
+		},
+	}));
 };
